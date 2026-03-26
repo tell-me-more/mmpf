@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Eierei</title>
+<style>
+  :root {
+    --bg: #f5f5f0;
+    --board-bg: #e8e4de;
+    --cell-bg: #d6d0c6;
+    --cell-empty: #ccc7bc;
+    --accent: #3a3a3a;
+    --text: #2c2c2c;
+    --text-light: #888;
+    --shadow: rgba(0,0,0,0.12);
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+    gap: 24px;
+  }
+
+  header {
+    text-align: center;
+  }
+
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  header .subtitle {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .status-bar .phase {
+    background: var(--accent);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-bar .count {
+    color: var(--text-light);
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 8px;
+    width: min(80vw, 80vh, 440px);
+    height: min(80vw, 80vh, 440px);
+    background: var(--board-bg);
+    padding: 12px;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px var(--shadow);
+  }
+
+  .cell {
+    position: relative;
+    border-radius: var(--radius);
+    background: var(--cell-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+
+  .cell.center-mark {
+    background: var(--cell-empty);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
+  }
+
+  .cell.highlight {
+    box-shadow: 0 0 0 3px rgba(80, 160, 80, 0.6);
+    transform: scale(1.04);
+  }
+
+  .cell.selected {
+    box-shadow: 0 0 0 3px var(--accent);
+    transform: scale(1.06);
+  }
+
+  .stone {
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    box-shadow: 0 3px 8px var(--shadow), inset 0 2px 4px rgba(255,255,255,0.35);
+    transition: transform 0.2s, opacity 0.25s;
+  }
+
+  .stone.removing {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s, opacity 0.15s;
+  }
+
+  button:active {
+    transform: scale(0.96);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+
+  .btn-secondary {
+    background: #ddd;
+    color: var(--text);
+  }
+
+  .btn-danger {
+    background: #c0392b;
+    color: #fff;
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
+    transform: none;
+  }
+
+  .message-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .message-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .message-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 36px 40px;
+    text-align: center;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.2);
+    max-width: 340px;
+  }
+
+  .message-box h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .message-box p {
+    color: var(--text-light);
+    font-size: 15px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .message-box .emoji {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  .hint {
+    font-size: 13px;
+    color: var(--text-light);
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>Eierei</h1>
+    <div class="subtitle">auf dem 5×5 Feld</div>
+  </header>
+
+  <div class="status-bar">
+    <span class="phase" id="phaseLabel">Planung</span>
+    <span class="count" id="stoneCount">Steine: 0</span>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <div class="controls" id="controls">
+    <button class="btn-primary" id="btnStart" disabled>Spiel starten</button>
+    <button class="btn-secondary" id="btnClear">Alle entfernen</button>
+    <button class="btn-secondary" id="btnPreset">Vorlage laden</button>
+  </div>
+
+  <div class="hint" id="hint">Tippe auf Felder, um Steine zu platzieren. Tippe erneut, um sie zu entfernen.</div>
+</div>
+
+<div class="message-overlay" id="overlay">
+  <div class="message-box">
+    <div class="emoji" id="msgEmoji"></div>
+    <h2 id="msgTitle"></h2>
+    <p id="msgText"></p>
+    <button class="btn-primary" id="msgBtn">Neues Spiel</button>
+  </div>
+</div>
+
+<script>
+const STONE_COLORS = [
+  '#e74c3c', '#e67e22', '#f1c40f', '#2ecc71',
+  '#1abc9c', '#3498db', '#9b59b6', '#e84393',
+  '#fd79a8', '#00b894', '#6c5ce7', '#d63031'
+];
+
+const SIZE = 5;
+const CENTER = 2;
+
+let board = []; // 2D: null or { color }
+let phase = 'planning'; // 'planning' | 'playing'
+let selected = null; // { r, c }
+let stoneCount = 0;
+
+const boardEl = document.getElementById('board');
+const phaseLabel = document.getElementById('phaseLabel');
+const stoneCountEl = document.getElementById('stoneCount');
+const controlsEl = document.getElementById('controls');
+const hintEl = document.getElementById('hint');
+const btnStart = document.getElementById('btnStart');
+const btnClear = document.getElementById('btnClear');
+const btnPreset = document.getElementById('btnPreset');
+const overlay = document.getElementById('overlay');
+const msgEmoji = document.getElementById('msgEmoji');
+const msgTitle = document.getElementById('msgTitle');
+const msgText = document.getElementById('msgText');
+const msgBtn = document.getElementById('msgBtn');
+
+function randomColor() {
+  return STONE_COLORS[Math.floor(Math.random() * STONE_COLORS.length)];
+}
+
+function initBoard() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  selected = null;
+  stoneCount = 0;
+  phase = 'planning';
+  render();
+  updateUI();
+}
+
+function render() {
+  boardEl.innerHTML = '';
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (r === CENTER && c === CENTER) cell.classList.add('center-mark');
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+
+      if (board[r][c]) {
+        const stone = document.createElement('div');
+        stone.className = 'stone';
+        stone.style.background = board[r][c].color;
+        cell.appendChild(stone);
+      }
+
+      if (selected && selected.r === r && selected.c === c) {
+        cell.classList.add('selected');
+      }
+
+      if (phase === 'playing' && selected) {
+        const moves = getValidMoves(selected.r, selected.c);
+        if (moves.some(m => m.tr === r && m.tc === c)) {
+          cell.classList.add('highlight');
+        }
+      }
+
+      cell.addEventListener('click', () => onCellClick(r, c));
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function updateUI() {
+  stoneCount = countStones();
+  stoneCountEl.textContent = `Steine: ${stoneCount}`;
+
+  if (phase === 'planning') {
+    phaseLabel.textContent = 'Planung';
+    phaseLabel.style.background = 'var(--accent)';
+    btnStart.disabled = stoneCount < 2;
+    btnStart.style.display = '';
+    btnClear.style.display = '';
+    btnPreset.style.display = '';
+    hintEl.textContent = 'Tippe auf Felder, um Steine zu platzieren. Tippe erneut, um sie zu entfernen.';
+  } else {
+    phaseLabel.textContent = 'Spiel';
+    phaseLabel.style.background = '#27ae60';
+    btnStart.style.display = 'none';
+    btnPreset.style.display = 'none';
+    btnClear.textContent = 'Neustart';
+    btnClear.className = 'btn-danger';
+    hintEl.textContent = 'Wähle einen Stein und springe über einen benachbarten Stein auf ein freies Feld.';
+  }
+}
+
+function countStones() {
+  let n = 0;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (board[r][c]) n++;
+  return n;
+}
+
+function onCellClick(r, c) {
+  if (phase === 'planning') {
+    if (board[r][c]) {
+      board[r][c] = null;
+    } else {
+      board[r][c] = { color: randomColor() };
+    }
+    render();
+    updateUI();
+    return;
+  }
+
+  // Playing phase
+  if (selected) {
+    const moves = getValidMoves(selected.r, selected.c);
+    const move = moves.find(m => m.tr === r && m.tc === c);
+    if (move) {
+      executeMove(move);
+      return;
+    }
+    // Deselect or reselect
+    if (selected.r === r && selected.c === c) {
+      selected = null;
+    } else if (board[r][c]) {
+      selected = { r, c };
+    } else {
+      selected = null;
+    }
+  } else {
+    if (board[r][c]) {
+      selected = { r, c };
+    }
+  }
+  render();
+}
+
+function getValidMoves(r, c) {
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  const moves = [];
+  for (const [dr, dc] of dirs) {
+    const mr = r + dr, mc = c + dc; // middle (jumped over)
+    const tr = r + 2*dr, tc = c + 2*dc; // target
+    if (tr >= 0 && tr < SIZE && tc >= 0 && tc < SIZE) {
+      if (board[mr][mc] && !board[tr][tc]) {
+        moves.push({ fr: r, fc: c, mr, mc, tr, tc });
+      }
+    }
+  }
+  return moves;
+}
+
+function executeMove(move) {
+  const { fr, fc, mr, mc, tr, tc } = move;
+  const stone = board[fr][fc];
+
+  // Animate removal of jumped stone
+  board[fr][fc] = null;
+  board[tr][tc] = stone;
+  board[mr][mc] = null;
+  selected = null;
+
+  render();
+  updateUI();
+
+  // Check game state after move
+  setTimeout(() => checkGameState(), 150);
+}
+
+function checkGameState() {
+  const stones = countStones();
+  if (stones === 1) {
+    if (board[CENTER][CENTER]) {
+      showMessage('🎉', 'Gewonnen!', 'Perfekt! Der letzte Stein liegt genau in der Mitte.');
+    } else {
+      showMessage('😔', 'Knapp daneben', 'Ein Stein übrig, aber leider nicht in der Mitte.');
+    }
+    return;
+  }
+
+  // Check if any move is possible
+  let anyMove = false;
+  for (let r = 0; r < SIZE && !anyMove; r++)
+    for (let c = 0; c < SIZE && !anyMove; c++)
+      if (board[r][c] && getValidMoves(r, c).length > 0)
+        anyMove = true;
+
+  if (!anyMove) {
+    showMessage('😕', 'Keine Züge mehr', `Es sind noch ${stones} Steine auf dem Feld. Versuche es erneut!`);
+  }
+}
+
+function showMessage(emoji, title, text) {
+  msgEmoji.textContent = emoji;
+  msgTitle.textContent = title;
+  msgText.textContent = text;
+  overlay.classList.add('visible');
+}
+
+function hideMessage() {
+  overlay.classList.remove('visible');
+}
+
+function loadPreset() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (r === CENTER && c === CENTER) continue; // leave center empty
+      board[r][c] = { color: randomColor() };
+    }
+  }
+  render();
+  updateUI();
+}
+
+function startGame() {
+  if (countStones() < 2) return;
+  phase = 'playing';
+  selected = null;
+  render();
+  updateUI();
+}
+
+// Event listeners
+btnStart.addEventListener('click', startGame);
+
+btnClear.addEventListener('click', () => {
+  if (phase === 'playing') {
+    initBoard();
+    btnClear.textContent = 'Alle entfernen';
+    btnClear.className = 'btn-secondary';
+  } else {
+    board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    render();
+    updateUI();
+  }
+});
+
+btnPreset.addEventListener('click', loadPreset);
+
+msgBtn.addEventListener('click', () => {
+  hideMessage();
+  initBoard();
+  btnClear.textContent = 'Alle entfernen';
+  btnClear.className = 'btn-secondary';
+});
+
+// Init
+initBoard();
+</script>
+</body>
+</html>
