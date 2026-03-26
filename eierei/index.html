@@ -241,12 +241,28 @@
     <span class="count" id="stoneCount">Steine: 0</span>
   </div>
 
-  <div class="board" id="board"></div>
+  <div style="display: flex; align-items: flex-start; gap: 0;">
+    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+      <div style="height: 32px;"></div>
+      <div id="coordRows" style="display: flex; flex-direction: column;"></div>
+    </div>
+    <div>
+      <div style="display: flex;">
+        <div style="width: 32px;"></div>
+        <div id="coordCols" style="display: flex; flex-direction: row;"></div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 32px;"></div>
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="controls" id="controls">
     <button class="btn-primary" id="btnStart" disabled>Spiel starten</button>
     <button class="btn-secondary" id="btnClear">Alle entfernen</button>
     <button class="btn-secondary" id="btnPreset">Vorlage laden</button>
+    <button class="btn-secondary" id="btnCoords">Koordinaten</button>
   </div>
 
   <div class="hint" id="hint">Tippe auf Felder, um Steine zu platzieren. Tippe erneut, um sie zu entfernen.</div>
@@ -289,6 +305,10 @@ const msgEmoji = document.getElementById('msgEmoji');
 const msgTitle = document.getElementById('msgTitle');
 const msgText = document.getElementById('msgText');
 const msgBtn = document.getElementById('msgBtn');
+const btnCoords = document.getElementById('btnCoords');
+const coordRows = document.getElementById('coordRows');
+const coordCols = document.getElementById('coordCols');
+let coordsVisible = false;
 
 function randomColor() {
   return STONE_COLORS[Math.floor(Math.random() * STONE_COLORS.length)];
@@ -335,7 +355,52 @@ function render() {
       boardEl.appendChild(cell);
     }
   }
+
+  // Koordinaten-Beschriftung
+  if (coordsVisible) {
+    // Spalten oben (A-E)
+    coordCols.innerHTML = '';
+    for (let c = 0; c < SIZE; c++) {
+      const label = document.createElement('div');
+      label.textContent = String.fromCharCode(65 + c); // A, B, C, D, E
+      label.style.width = 'calc((min(80vw, 80vh, 440px) - 24px) / 5)';
+      label.style.height = '32px';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.justifyContent = 'center';
+      label.style.fontWeight = 'bold';
+      label.style.fontSize = '18px';
+      coordCols.appendChild(label);
+    }
+    coordCols.style.visibility = 'visible';
+    // Zeilen links (1-5)
+    coordRows.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      const label = document.createElement('div');
+      label.textContent = (r + 1).toString();
+      label.style.height = 'calc((min(80vw, 80vh, 440px) - 24px) / 5)';
+      label.style.width = '32px';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.justifyContent = 'center';
+      label.style.fontWeight = 'bold';
+      label.style.fontSize = '18px';
+      coordRows.appendChild(label);
+    }
+    coordRows.style.visibility = 'visible';
+  } else {
+    coordCols.innerHTML = '';
+    coordRows.innerHTML = '';
+    coordCols.style.visibility = 'hidden';
+    coordRows.style.visibility = 'hidden';
+  }
 }
+// Koordinaten-Button Event
+btnCoords.addEventListener('click', () => {
+  coordsVisible = !coordsVisible;
+  btnCoords.classList.toggle('btn-primary', coordsVisible);
+  render();
+});
 
 function updateUI() {
   stoneCount = countStones();
