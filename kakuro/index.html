@@ -155,7 +155,7 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, transparent 49%, #d8dde6 50%, #d8dde6 51%, transparent 52%);
+      background: linear-gradient(to bottom right, transparent 49%, #d8dde6 50%, #d8dde6 51%, transparent 52%);
       pointer-events: none;
     }
 
@@ -185,15 +185,6 @@
     .cell.input.selected {
       outline: 3px solid #ffbe55;
       outline-offset: -3px;
-    }
-
-    .cell.input.highlight-h,
-    .cell.input.highlight-v {
-      background: #e7efff;
-    }
-
-    .cell.input.highlight-h.highlight-v {
-      background: #d7e3ff;
     }
 
     .cell.input.state-neutral { box-shadow: inset 0 0 0 2px var(--neutral); }
@@ -230,8 +221,7 @@
     }
 
     .rule-box,
-    .status-box,
-    .active-target {
+    .status-box {
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 10px;
@@ -283,6 +273,7 @@
         <button class="tab-btn active" data-tab="instructions">Anleitung</button>
         <button class="tab-btn" data-tab="puzzle0">Aufgabe 1</button>
         <button class="tab-btn" data-tab="puzzle1">Aufgabe 2</button>
+        <button class="tab-btn" data-tab="puzzle2">Aufgabe 3</button>
       </nav>
     </section>
 
@@ -299,7 +290,6 @@
           <div class="controls">
             <button class="control-btn primary" id="checkBtn">Prüfen</button>
             <button class="control-btn warn" id="resetBtn">Zurücksetzen</button>
-            <button class="control-btn" id="helpBtn">Hilfen: aus</button>
           </div>
           <h2 class="puzzle-title" id="puzzleTitle">Aufgabe</h2>
           <div class="board-wrap">
@@ -310,10 +300,6 @@
       </section>
 
       <aside class="side-card">
-        <section class="active-target">
-          <h3 class="panel-title">Aktives Feld</h3>
-          <p id="activeInfo">Wähle ein Eingabefeld, um Zielsumme(n) zu sehen.</p>
-        </section>
         <section class="rule-box" id="ruleBox">
           <h3 class="panel-title">Regeln kompakt</h3>
           <ul>
@@ -353,6 +339,17 @@
           [{ type: "block" }, { type: "clue", right: 4 }, { type: "input", solution: "3" }, { type: "input", solution: "1" }, { type: "block" }],
           [{ type: "block" }, { type: "block" }, { type: "block" }, { type: "block" }, { type: "block" }]
         ]
+      },
+      {
+        title: "Aufgabe 3",
+        cells: [
+          [{ type: "block" }, { type: "clue", down: 9 }, { type: "clue", down: 16 }, { type: "block" }, { type: "clue", down: 3 }, { type: "clue", down: 15 }],
+          [{ type: "clue", right: 10 }, { type: "input", solution: "4" }, { type: "input", solution: "6" }, { type: "clue", right: 11, down: 14 }, { type: "input", solution: "3" }, { type: "input", solution: "8" }],
+          [{ type: "clue", right: 15 }, { type: "input", solution: "5" }, { type: "input", solution: "1" }, { type: "input", solution: "9" }, { type: "clue", right: 7, down: 10 }, { type: "input", solution: "7" }],
+          [{ type: "block" }, { type: "clue", right: 13, down: 2 }, { type: "input", solution: "2" }, { type: "input", solution: "5" }, { type: "input", solution: "6" }, { type: "clue", down: 6 }],
+          [{ type: "clue", right: 9 }, { type: "input", solution: "2" }, { type: "input", solution: "7" }, { type: "clue", right: 10 }, { type: "input", solution: "4" }, { type: "input", solution: "6" }],
+          [{ type: "block" }, { type: "block" }, { type: "block" }, { type: "block" }, { type: "block" }, { type: "block" }]
+        ]
       }
     ];
 
@@ -361,7 +358,6 @@ const state = {
       currentPuzzle: 0,
       selectedDigit: "",
       selectedCell: null,
-      helpsEnabled: false,
       values: puzzles.map((p) => p.cells.map((row) => row.map((cell) => (cell.type === "input" ? "" : null)))),
       validation: { blockStates: new Map(), cellStates: new Map(), messages: [] }
     };
@@ -373,10 +369,8 @@ const state = {
     const board = document.getElementById("board");
     const keypad = document.getElementById("keypad");
     const statusList = document.getElementById("statusList");
-    const activeInfo = document.getElementById("activeInfo");
     const checkBtn = document.getElementById("checkBtn");
     const resetBtn = document.getElementById("resetBtn");
-    const helpBtn = document.getElementById("helpBtn");
 
     function getPuzzle() {
       return puzzles[state.currentPuzzle];
@@ -394,8 +388,6 @@ const state = {
         state.selectedDigit = "";
         state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
         renderPuzzle();
-      } else {
-        activeInfo.textContent = "Wähle ein Eingabefeld, um Zielsumme(n) zu sehen.";
       }
       renderStatus();
       renderKeypad();
@@ -430,13 +422,6 @@ const state = {
         }
       }
       return blocks;
-    }
-
-    function getCellBlocks(r, c, blocks) {
-      return {
-        h: blocks.find((b) => b.orientation === "horizontal" && b.cells.some(([br, bc]) => br === r && bc === c)),
-        v: blocks.find((b) => b.orientation === "vertical" && b.cells.some(([br, bc]) => br === r && bc === c))
-      };
     }
 
     function validateCurrentPuzzle() {
@@ -514,36 +499,12 @@ const state = {
       });
     }
 
-    function renderActiveInfo() {
-      if (!state.selectedCell || !state.tab.startsWith("puzzle")) {
-        activeInfo.textContent = "Wähle ein Eingabefeld, um Zielsumme(n) zu sehen.";
-        return;
-      }
-      const [r, c] = state.selectedCell;
-      const blocks = computeBlocks(getPuzzle());
-      const { h, v } = getCellBlocks(r, c, blocks);
-      const parts = [];
-      if (h) parts.push(`Waagerecht: ${h.sum}`);
-      if (v) parts.push(`Senkrecht: ${v.sum}`);
-      activeInfo.textContent = parts.length ? parts.join(" | ") : "Für dieses Feld wurde kein Summenblock gefunden.";
-    }
-
     function renderPuzzle() {
       const puzzle = getPuzzle();
       const values = state.values[state.currentPuzzle];
-      const blocks = computeBlocks(puzzle);
       puzzleTitle.textContent = puzzle.title;
       board.style.gridTemplateColumns = `repeat(${puzzle.cells[0].length}, 56px)`;
       board.innerHTML = "";
-
-      const highlightSetH = new Set();
-      const highlightSetV = new Set();
-      if (state.helpsEnabled && state.selectedCell) {
-        const [r, c] = state.selectedCell;
-        const { h, v } = getCellBlocks(r, c, blocks);
-        (h?.cells || []).forEach(([hr, hc]) => highlightSetH.add(cellKey(hr, hc)));
-        (v?.cells || []).forEach(([vr, vc]) => highlightSetV.add(cellKey(vr, vc)));
-      }
 
       for (let r = 0; r < puzzle.cells.length; r += 1) {
         for (let c = 0; c < puzzle.cells[r].length; c += 1) {
@@ -572,8 +533,6 @@ const state = {
             if (state.selectedCell && state.selectedCell[0] === r && state.selectedCell[1] === c) {
               div.classList.add("selected");
             }
-            if (highlightSetH.has(key)) div.classList.add("highlight-h");
-            if (highlightSetV.has(key)) div.classList.add("highlight-v");
             const checkState = state.validation.cellStates.get(key);
             if (checkState) div.classList.add(`state-${checkState}`);
           }
@@ -615,12 +574,12 @@ const state = {
         values[r][c] = state.selectedDigit;
       }
 
-      renderActiveInfo();
       renderPuzzle();
     });
 
     checkBtn.addEventListener("click", () => {
       validateCurrentPuzzle();
+      state.selectedCell = null;
       renderStatus();
       renderPuzzle();
     });
@@ -630,16 +589,8 @@ const state = {
       state.values[state.currentPuzzle] = puzzle.cells.map((row) => row.map((cell) => (cell.type === "input" ? "" : null)));
       state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
       state.selectedCell = null;
-      renderActiveInfo();
       renderStatus();
       renderPuzzle();
-    });
-
-    helpBtn.addEventListener("click", () => {
-      state.helpsEnabled = !state.helpsEnabled;
-      helpBtn.textContent = `Hilfen: ${state.helpsEnabled ? "an" : "aus"}`;
-      renderPuzzle();
-      renderActiveInfo();
     });
 
     tabButtons.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
