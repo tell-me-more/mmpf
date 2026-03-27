@@ -498,6 +498,10 @@ const state = {
       });
     }
 
+    function clearValidationFeedback() {
+      state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
+    }
+
     function renderPuzzle() {
       const puzzle = getPuzzle();
       const values = state.values[state.currentPuzzle];
@@ -565,12 +569,19 @@ const state = {
       const c = Number(target.dataset.col);
       const values = state.values[state.currentPuzzle];
       const existing = values[r][c];
+      let nextValue = existing;
 
       state.selectedCell = [r, c];
       if (existing) {
-        values[r][c] = "";
+        nextValue = "";
       } else if (state.selectedDigit) {
-        values[r][c] = state.selectedDigit;
+        nextValue = state.selectedDigit;
+      }
+
+      if (nextValue !== existing) {
+        values[r][c] = nextValue;
+        clearValidationFeedback();
+        renderStatus();
       }
 
       renderPuzzle();
@@ -586,7 +597,7 @@ const state = {
     resetBtn.addEventListener("click", () => {
       const puzzle = getPuzzle();
       state.values[state.currentPuzzle] = puzzle.cells.map((row) => row.map((cell) => (cell.type === "input" ? "" : null)));
-      state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
+      clearValidationFeedback();
       state.selectedCell = null;
       renderStatus();
       renderPuzzle();
