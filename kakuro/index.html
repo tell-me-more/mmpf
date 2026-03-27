@@ -248,6 +248,42 @@
     .status-list li.ok { color: #1e6943; }
     .status-list li.neutral { color: #5c6676; }
 
+    .solution-controls {
+      display: grid;
+      gap: 8px;
+    }
+
+    .solution-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .solution-input {
+      flex: 1;
+      min-width: 130px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
+
+    .solution-msg {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .solution-msg.error {
+      color: #8b2b1f;
+      font-weight: 600;
+    }
+
+    .cell.input.solution-revealed {
+      color: #0d5c34;
+      box-shadow: inset 0 0 0 2px #0d5c34;
+    }
+
     .hidden { display: none; }
 
     .instruction {
@@ -316,6 +352,16 @@
             <li class="neutral">Noch keine Prüfung durchgeführt.</li>
           </ul>
         </section>
+        <section class="status-box solution-controls">
+          <button class="control-btn" id="showSolutionBtn">Lösung einblenden</button>
+          <div id="solutionUnlockBox" class="hidden">
+            <div class="solution-row">
+              <input class="solution-input" id="solutionPasswordInput" type="password" placeholder="Passwort eingeben" aria-label="Passwort für Lösung">
+              <button class="control-btn primary" id="confirmSolutionBtn">Bestätigen</button>
+            </div>
+            <p class="solution-msg" id="solutionMsg">Lehrerpasswort nötig.</p>
+          </div>
+        </section>
       </aside>
     </section>
   </main>
@@ -383,7 +429,9 @@ const state = {
       selectedDigit: "",
       selectedCell: null,
       values: puzzles.map((p) => p.cells.map((row) => row.map((cell) => (cell.type === "input" ? "" : null)))),
-      validation: { blockStates: new Map(), cellStates: new Map(), messages: [] }
+      validation: { blockStates: new Map(), cellStates: new Map(), messages: [] },
+      solutionUnlockVisible: false,
+      solutionRevealActive: false
     };
 
     const tabButtons = [...document.querySelectorAll(".tab-btn")];
@@ -395,6 +443,11 @@ const state = {
     const statusList = document.getElementById("statusList");
     const checkBtn = document.getElementById("checkBtn");
     const resetBtn = document.getElementById("resetBtn");
+    const showSolutionBtn = document.getElementById("showSolutionBtn");
+    const solutionUnlockBox = document.getElementById("solutionUnlockBox");
+    const solutionPasswordInput = document.getElementById("solutionPasswordInput");
+    const confirmSolutionBtn = document.getElementById("confirmSolutionBtn");
+    const solutionMsg = document.getElementById("solutionMsg");
 
     function getPuzzle() {
       return puzzles[state.currentPuzzle];
@@ -411,10 +464,13 @@ const state = {
         state.selectedCell = null;
         state.selectedDigit = "";
         state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
+        state.solutionRevealActive = false;
+        state.solutionUnlockVisible = false;
         renderPuzzle();
       }
       renderStatus();
       renderKeypad();
+      renderSolutionControls();
     }
 
     function cellKey(r, c) {
@@ -527,6 +583,26 @@ const state = {
       state.validation = { blockStates: new Map(), cellStates: new Map(), messages: [] };
     }
 
+    function renderSolutionControls(message = "", isError = false) {
+      const inPuzzle = state.tab.startsWith("puzzle");
+      showSolutionBtn.classList.toggle("hidden", !inPuzzle);
+      solutionUnlockBox.classList.toggle("hidden", !inPuzzle || !state.solutionUnlockVisible);
+      if (!inPuzzle || !state.solutionUnlockVisible) return;
+      solutionMsg.textContent = message || (state.solutionRevealActive ? "Lösungen sind eingeblendet." : "Lehrerpasswort nötig.");
+      solutionMsg.classList.toggle("error", Boolean(isError));
+    }
+
+    function revealSolutionsForCurrentPuzzle() {
+      const puzzle = getPuzzle();
+      state.values[state.currentPuzzle] = puzzle.cells.map((row) => row.map((cell) => (cell.type === "input" ? cell.solution : null)));
+      state.solutionRevealActive = true;
+      state.selectedCell = null;
+      clearValidationFeedback();
+      renderStatus();
+      renderPuzzle();
+      renderSolutionControls("Lösungen eingeblendet. Mit „Zurücksetzen“ entfernst du sie wieder.");
+    }
+
     function renderPuzzle() {
       const puzzle = getPuzzle();
       const values = state.values[state.currentPuzzle];
@@ -563,6 +639,9 @@ const state = {
             }
             const checkState = state.validation.cellStates.get(key);
             if (checkState) div.classList.add(`state-${checkState}`);
+            if (state.solutionRevealActive && values[r][c] === cell.solution) {
+              div.classList.add("solution-revealed");
+            }
           }
           board.append(div);
         }
@@ -622,10 +701,38 @@ const state = {
     resetBtn.addEventListener("click", () => {
       const puzzle = getPuzzle();
       state.values[state.currentPuzzle] = puzzle.cells.map((row) => row.map((cell) => (cell.type === "input" ? "" : null)));
+      state.solutionRevealActive = false;
+      state.solutionUnlockVisible = false;
+      solutionPasswordInput.value = "";
       clearValidationFeedback();
       state.selectedCell = null;
       renderStatus();
       renderPuzzle();
+      renderSolutionControls();
+    });
+
+    showSolutionBtn.addEventListener("click", () => {
+      state.solutionUnlockVisible = !state.solutionUnlockVisible;
+      if (!state.solutionUnlockVisible) {
+        solutionPasswordInput.value = "";
+      }
+      renderSolutionControls();
+    });
+
+    confirmSolutionBtn.addEventListener("click", () => {
+      if (solutionPasswordInput.value === "lehrerlsg") {
+        solutionPasswordInput.value = "";
+        revealSolutionsForCurrentPuzzle();
+      } else {
+        renderSolutionControls("Falsches Passwort.", true);
+      }
+    });
+
+    solutionPasswordInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        confirmSolutionBtn.click();
+      }
     });
 
     tabButtons.forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
