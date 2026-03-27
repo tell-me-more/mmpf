@@ -112,7 +112,8 @@
     .status-grid {
       display: grid;
       gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: 1fr;
+      width: min(100%, 460px);
     }
 
     .badge {
@@ -144,6 +145,8 @@
     .board-wrap {
       overflow-x: auto;
       padding-bottom: 4px;
+      margin-top: 10px;
+      width: min(100%, 460px);
     }
 
     .board {
@@ -227,15 +230,20 @@
     .btn.danger { background: var(--danger); }
     .btn.hidden { display: none; }
 
-    .message {
-      margin-top: 8px;
-      min-height: 24px;
-      font-size: 0.95rem;
-      color: #233041;
+    .status-note {
+      display: block;
+      margin-top: 6px;
+      font-weight: 500;
     }
 
-    .message.error { color: var(--danger); }
-    .message.success { color: var(--ok); font-weight: 700; }
+    .status-note.error {
+      color: var(--danger);
+    }
+
+    .status-note.success {
+      color: var(--ok);
+      font-weight: 700;
+    }
 
     .hint-box {
       border: 1px dashed var(--line);
@@ -283,7 +291,11 @@
           <h2>Spiel</h2>
           <div class="status-grid">
             <div class="badge" id="turnBadge"><strong>Aktueller Spieler</strong><span></span></div>
-            <div class="badge"><strong>Status</strong><span id="statusText">Spiel läuft.</span></div>
+            <div class="badge">
+              <strong>Status</strong>
+              <span id="statusText">Spiel läuft.</span>
+              <span class="status-note" id="statusNote">Tippe einen eigenen Stein an, um zu starten.</span>
+            </div>
           </div>
 
           <div class="board-wrap">
@@ -293,10 +305,7 @@
           <div class="controls" style="margin-top: 12px;">
             <button class="btn primary" type="button" id="newGameBtn">Neues Spiel</button>
             <button class="btn" type="button" id="resetBtn">Zurücksetzen</button>
-            <button class="btn danger hidden" type="button" id="playAgainBtn">Erneut spielen</button>
           </div>
-
-          <div class="message" id="message" aria-live="polite"></div>
         </div>
       </div>
     </section>
@@ -328,12 +337,11 @@
 
     const ui = {
       board: document.getElementById('board'),
-      message: document.getElementById('message'),
+      statusNote: document.getElementById('statusNote'),
       statusText: document.getElementById('statusText'),
       turnBadge: document.getElementById('turnBadge').querySelector('span'),
       newGameBtn: document.getElementById('newGameBtn'),
       resetBtn: document.getElementById('resetBtn'),
-      playAgainBtn: document.getElementById('playAgainBtn'),
       tabGuide: document.getElementById('tabGuide'),
       tabGame: document.getElementById('tabGame'),
       guideSection: document.getElementById('guideSection'),
@@ -344,7 +352,6 @@
     ui.tabGame.addEventListener('click', () => setActiveTab('game'));
     ui.newGameBtn.addEventListener('click', () => restartGame('Neues Spiel gestartet. Weiß beginnt.'));
     ui.resetBtn.addEventListener('click', () => restartGame('Spielfeld zurückgesetzt.'));
-    ui.playAgainBtn.addEventListener('click', () => restartGame('Neue Runde gestartet. Weiß beginnt.'));
 
     function createInitialState() {
       return {
@@ -463,7 +470,7 @@
 
     function handleCellTap(row, col) {
       if (gameState.winner) {
-        setMessage('Das Spiel ist beendet. Nutze „Erneut spielen“.', 'error');
+        setMessage('Das Spiel ist beendet. Starte ein neues Spiel.', 'error');
         return;
       }
 
@@ -528,7 +535,6 @@
         const winnerLabel = gameState.winner === 'white' ? 'Weiß' : 'Schwarz';
         setMessage(`${winnerLabel} gewinnt.`, 'success');
         ui.statusText.textContent = 'Spiel beendet.';
-        ui.playAgainBtn.classList.remove('hidden');
       } else {
         switchPlayer();
         setMessage('Zug ausgeführt.', '');
@@ -539,8 +545,8 @@
 
     function setMessage(text, type) {
       gameState.message = text;
-      ui.message.textContent = text;
-      ui.message.className = `message${type ? ` ${type}` : ''}`;
+      ui.statusNote.textContent = text;
+      ui.statusNote.className = `status-note${type ? ` ${type}` : ''}`;
     }
 
     function isWinningCell(row, col) {
@@ -586,10 +592,8 @@
       if (gameState.winner) {
         const winnerLabel = gameState.winner === 'white' ? 'Weiß' : 'Schwarz';
         ui.statusText.textContent = `Gewinner: ${winnerLabel}`;
-        ui.playAgainBtn.classList.remove('hidden');
       } else {
         ui.statusText.textContent = 'Spiel läuft.';
-        ui.playAgainBtn.classList.add('hidden');
       }
     }
 
