@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hashi – Mathe mit Pfiff</title>
+  <style>
+    :root {
+      --bg: #f4f5ef;
+      --panel: #ffffff;
+      --text: #1f2a3a;
+      --muted: #5e6879;
+      --border: #c9d2df;
+      --accent: #2f61d8;
+      --warn: #b63d30;
+      --ok: #23784e;
+      --grid: #d9e1ee;
+      --island: #fff;
+      --island-selected: #ffe08a;
+      --bridge: #1f2a3a;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(20, 32, 53, 0.08);
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+      max-width: 70ch;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(290px, 360px);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: #4f5d76;
+      font-size: 0.95rem;
+    }
+
+    .btn.primary { background: var(--accent); }
+    .btn.warn { background: #93453b; }
+    .btn.secondary { background: #5e6879; }
+
+    .puzzle-label {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .board-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f9fbff;
+      overflow: auto;
+      max-height: 72vh;
+      padding: 10px;
+    }
+
+    .board {
+      --cell: clamp(44px, min(8.5vw, 64px), 64px);
+      position: relative;
+      width: calc(var(--cols) * var(--cell));
+      height: calc(var(--rows) * var(--cell));
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: var(--cell) var(--cell);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .bridges {
+      position: absolute;
+      inset: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .bridge-line {
+      stroke: var(--bridge);
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .island {
+      position: absolute;
+      width: calc(var(--cell) * 0.64);
+      height: calc(var(--cell) * 0.64);
+      border-radius: 50%;
+      border: 2px solid #2d3d59;
+      background: var(--island);
+      display: grid;
+      place-items: center;
+      transform: translate(-50%, -50%);
+      font-size: clamp(1rem, 2.1vw, 1.1rem);
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .island.selected {
+      background: var(--island-selected);
+      box-shadow: 0 0 0 3px rgba(255, 189, 59, 0.5);
+    }
+
+    .island.invalid {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    .island.valid {
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .box ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+      line-height: 1.45;
+      color: #3f4c62;
+      font-size: 0.93rem;
+    }
+
+    .status {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+
+    .status .ok { color: var(--ok); }
+    .status .warn { color: var(--warn); }
+    .status .neutral { color: var(--muted); }
+
+    .kbd {
+      display: inline-block;
+      border: 1px solid #9ba8be;
+      border-radius: 5px;
+      padding: 0 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+      background: #f4f7ff;
+    }
+
+    @media (max-width: 930px) {
+      .layout { grid-template-columns: 1fr; }
+      .board-wrap { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>Hashi (Brückenrätsel)</h1>
+      <p class="subtitle">Verbinde Inseln mit Brücken nach den Regeln. Ziel: Alle Zahlen erfüllen und ein zusammenhängendes Netzwerk bilden.</p>
+    </section>
+
+    <section class="layout">
+      <section class="card">
+        <div class="controls" aria-label="Spielsteuerung">
+          <button class="btn primary" id="checkBtn" aria-label="Puzzle prüfen">Prüfen</button>
+          <button class="btn warn" id="resetBtn" aria-label="Puzzle zurücksetzen">Reset</button>
+          <button class="btn secondary" id="hintBtn" aria-label="Hinweis anzeigen">Hinweis</button>
+          <button class="btn secondary" id="solutionBtn" aria-label="Lösung anzeigen">Lösung anzeigen</button>
+          <button class="btn secondary" id="nextPuzzleBtn" aria-label="Zum nächsten Puzzle wechseln">Puzzle wechseln</button>
+        </div>
+        <h2 class="puzzle-label" id="puzzleLabel"></h2>
+        <div class="board-wrap">
+          <div id="board" class="board" tabindex="0" role="application" aria-label="Hashi Spielfeld"></div>
+        </div>
+      </section>
+
+      <aside class="card panel">
+        <section class="box">
+          <h2>Anleitung für Schüler</h2>
+          <ul>
+            <li>Jede Insel braucht genau so viele Brücken wie ihre Zahl.</li>
+            <li>Brücken dürfen nur waagerecht oder senkrecht verlaufen.</li>
+            <li>Brücken verbinden immer direkte Nachbarinseln (ohne Insel dazwischen).</li>
+            <li>Zwischen zwei Inseln sind 0, 1 oder 2 Brücken erlaubt.</li>
+            <li>Brücken dürfen sich nicht kreuzen.</li>
+            <li>Am Ende müssen alle Inseln zusammenhängen.</li>
+          </ul>
+        </section>
+
+        <section class="box">
+          <h2>Tastatur</h2>
+          <ul>
+            <li><span class="kbd">Tab</span>: nächste Insel auswählen</li>
+            <li><span class="kbd">Shift</span> + Pfeiltaste: Brücke zu direktem Nachbarn schalten (0→1→2→0)</li>
+            <li>Pfeiltasten: Auswahl in Richtung bewegen</li>
+            <li><span class="kbd">R</span>: Reset, <span class="kbd">P</span>: Prüfen, <span class="kbd">H</span>: Hinweis</li>
+          </ul>
+        </section>
+
+        <section class="box" aria-live="polite">
+          <h2>Status</h2>
+          <ul id="statusList" class="status"></ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const puzzles = [
+      {
+        title: "Puzzle 1 (leicht)",
+        rows: 5,
+        cols: 5,
+        islands: [
+          { id: "A", row: 0, col: 0, value: 2 },
+          { id: "B", row: 0, col: 2, value: 3 },
+          { id: "C", row: 0, col: 4, value: 2 },
+          { id: "D", row: 2, col: 0, value: 2 },
+          { id: "E", row: 2, col: 2, value: 5 },
+          { id: "F", row: 2, col: 4, value: 2 },
+          { id: "G", row: 4, col: 2, value: 1 }
+        ],
+        solution: [
+          { a: "A", b: "B", count: 1 },
+          { a: "A", b: "D", count: 1 },
+          { a: "B", b: "C", count: 1 },
+          { a: "B", b: "E", count: 2 },
+          { a: "C", b: "F", count: 1 },
+          { a: "D", b: "E", count: 1 },
+          { a: "E", b: "F", count: 1 },
+          { a: "E", b: "G", count: 1 }
+        ]
+      },
+      {
+        title: "Puzzle 2 (mittel)",
+        rows: 6,
+        cols: 6,
+        islands: [
+          { id: "A", row: 0, col: 1, value: 2 },
+          { id: "B", row: 0, col: 4, value: 2 },
+          { id: "C", row: 2, col: 1, value: 4 },
+          { id: "D", row: 2, col: 4, value: 4 },
+          { id: "E", row: 4, col: 1, value: 2 },
+          { id: "F", row: 4, col: 4, value: 2 },
+          { id: "G", row: 2, col: 0, value: 1 },
+          { id: "H", row: 2, col: 5, value: 1 }
+        ],
+        solution: [
+          { a: "A", b: "B", count: 1 },
+          { a: "A", b: "C", count: 1 },
+          { a: "B", b: "D", count: 1 },
+          { a: "C", b: "D", count: 1 },
+          { a: "C", b: "E", count: 1 },
+          { a: "C", b: "G", count: 1 },
+          { a: "D", b: "F", count: 1 },
+          { a: "D", b: "H", count: 1 },
+          { a: "E", b: "F", count: 1 }
+        ]
+      },
+      {
+        title: "Puzzle 3 (knifflig)",
+        rows: 7,
+        cols: 7,
+        islands: [
+          { id: "A", row: 0, col: 3, value: 2 },
+          { id: "B", row: 2, col: 1, value: 3 },
+          { id: "C", row: 2, col: 3, value: 5 },
+          { id: "D", row: 2, col: 5, value: 3 },
+          { id: "E", row: 4, col: 3, value: 5 },
+          { id: "F", row: 6, col: 3, value: 2 },
+          { id: "G", row: 4, col: 1, value: 3 },
+          { id: "H", row: 4, col: 5, value: 3 }
+        ],
+        solution: [
+          { a: "A", b: "C", count: 2 },
+          { a: "B", b: "C", count: 1 },
+          { a: "B", b: "G", count: 2 },
+          { a: "C", b: "D", count: 1 },
+          { a: "C", b: "E", count: 1 },
+          { a: "D", b: "H", count: 2 },
+          { a: "E", b: "F", count: 2 },
+          { a: "E", b: "G", count: 1 },
+          { a: "E", b: "H", count: 1 }
+        ]
+      }
+    ];
+
+    const state = {
+      puzzleIndex: 0,
+      selectedIslandId: null,
+      statusMessages: [],
+      edges: new Map(),
+      puzzleMetas: [],
+      islandStatus: new Map(),
+      invalidEdgeSet: new Set()
+    };
+
+    const boardEl = document.getElementById("board");
+    const puzzleLabelEl = document.getElementById("puzzleLabel");
+    const statusListEl = document.getElementById("statusList");
+
+    const checkBtn = document.getElementById("checkBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const hintBtn = document.getElementById("hintBtn");
+    const solutionBtn = document.getElementById("solutionBtn");
+    const nextPuzzleBtn = document.getElementById("nextPuzzleBtn");
+
+    function edgeKey(a, b) {
+      return [a, b].sort().join("|");
+    }
+
+    function cloneMap(map) {
+      return new Map(map.entries());
+    }
+
+    function getCurrentPuzzle() {
+      return puzzles[state.puzzleIndex];
+    }
+
+    function getMeta() {
+      return state.puzzleMetas[state.puzzleIndex];
+    }
+
+    function puzzleError(message) {
+      throw new Error(`Ungültige Puzzledefinition: ${message}`);
+    }
+
+    function validatePuzzleDefinition(puzzle) {
+      if (!Number.isInteger(puzzle.rows) || puzzle.rows < 2) puzzleError(`${puzzle.title}: rows muss >= 2 sein`);
+      if (!Number.isInteger(puzzle.cols) || puzzle.cols < 2) puzzleError(`${puzzle.title}: cols muss >= 2 sein`);
+      if (!Array.isArray(puzzle.islands) || puzzle.islands.length < 2) puzzleError(`${puzzle.title}: islands fehlen`);
+      if (!Array.isArray(puzzle.solution)) puzzleError(`${puzzle.title}: solution fehlt`);
+
+      const ids = new Set();
+      const occupied = new Set();
+      puzzle.islands.forEach((island) => {
+        if (!island || typeof island.id !== "string" || !island.id.trim()) puzzleError(`${puzzle.title}: Insel ohne id`);
+        if (ids.has(island.id)) puzzleError(`${puzzle.title}: id doppelt (${island.id})`);
+        ids.add(island.id);
+        if (!Number.isInteger(island.row) || island.row < 0 || island.row >= puzzle.rows) puzzleError(`${puzzle.title}: row ungültig (${island.id})`);
+        if (!Number.isInteger(island.col) || island.col < 0 || island.col >= puzzle.cols) puzzleError(`${puzzle.title}: col ungültig (${island.id})`);
+        if (!Number.isInteger(island.value) || island.value < 1) puzzleError(`${puzzle.title}: value ungültig (${island.id})`);
+        const posKey = `${island.row},${island.col}`;
+        if (occupied.has(posKey)) puzzleError(`${puzzle.title}: zwei Inseln auf gleicher Position`);
+        occupied.add(posKey);
+      });
+    }
+
+    function buildPuzzleMeta(puzzle) {
+      validatePuzzleDefinition(puzzle);
+      const islandById = new Map(puzzle.islands.map((i) => [i.id, i]));
+      const byRow = new Map();
+      const byCol = new Map();
+
+      puzzle.islands.forEach((island) => {
+        if (!byRow.has(island.row)) byRow.set(island.row, []);
+        if (!byCol.has(island.col)) byCol.set(island.col, []);
+        byRow.get(island.row).push(island);
+        byCol.get(island.col).push(island);
+      });
+
+      byRow.forEach((arr) => arr.sort((a, b) => a.col - b.col));
+      byCol.forEach((arr) => arr.sort((a, b) => a.row - b.row));
+
+      const neighbors = new Map();
+      const edgeDefs = new Map();
+
+      puzzle.islands.forEach((island) => neighbors.set(island.id, { up: null, right: null, down: null, left: null }));
+
+      byRow.forEach((arr) => {
+        for (let i = 0; i < arr.length - 1; i += 1) {
+          const left = arr[i];
+          const right = arr[i + 1];
+          neighbors.get(left.id).right = right.id;
+          neighbors.get(right.id).left = left.id;
+          edgeDefs.set(edgeKey(left.id, right.id), { a: left.id, b: right.id, orientation: "h" });
+        }
+      });
+
+      byCol.forEach((arr) => {
+        for (let i = 0; i < arr.length - 1; i += 1) {
+          const up = arr[i];
+          const down = arr[i + 1];
+          neighbors.get(up.id).down = down.id;
+          neighbors.get(down.id).up = up.id;
+          edgeDefs.set(edgeKey(up.id, down.id), { a: up.id, b: down.id, orientation: "v" });
+        }
+      });
+
+      const solutionMap = new Map();
+      puzzle.solution.forEach((edge) => {
+        if (!islandById.has(edge.a) || !islandById.has(edge.b)) puzzleError(`${puzzle.title}: solution referenziert unbekannte Insel`);
+        if (!Number.isInteger(edge.count) || edge.count < 1 || edge.count > 2) puzzleError(`${puzzle.title}: solution count muss 1 oder 2 sein`);
+        const key = edgeKey(edge.a, edge.b);
+        if (!edgeDefs.has(key)) puzzleError(`${puzzle.title}: solution enthält keine direkten Nachbarn (${edge.a}-${edge.b})`);
+        if (solutionMap.has(key)) puzzleError(`${puzzle.title}: solution enthält doppeltes Inselpaar (${key})`);
+        solutionMap.set(key, edge.count);
+      });
+
+      const solutionCrossing = getCrossingEdges(solutionMap, edgeDefs, islandById);
+      if (solutionCrossing.size) {
+        puzzleError(`${puzzle.title}: solution enthält Brückenkreuzungen`);
+      }
+
+      return { islandById, neighbors, edgeDefs, solutionMap };
+    }
+
+    function getBridgeSegments(edgeMap, edgeDefs, islandById) {
+      const segments = [];
+      edgeMap.forEach((count, key) => {
+        if (count < 1) return;
+        const def = edgeDefs.get(key);
+        const a = islandById.get(def.a);
+        const b = islandById.get(def.b);
+        segments.push({ key, orientation: def.orientation, r1: a.row, c1: a.col, r2: b.row, c2: b.col });
+      });
+      return segments;
+    }
+
+    function getCrossingEdges(edgeMap, edgeDefs, islandById) {
+      const segments = getBridgeSegments(edgeMap, edgeDefs, islandById);
+      const crossing = new Set();
+      for (let i = 0; i < segments.length; i += 1) {
+        const s1 = segments[i];
+        for (let j = i + 1; j < segments.length; j += 1) {
+          const s2 = segments[j];
+          if (s1.orientation === s2.orientation) continue;
+          const h = s1.orientation === "h" ? s1 : s2;
+          const v = s1.orientation === "v" ? s1 : s2;
+          const hRow = h.r1;
+          const hMinCol = Math.min(h.c1, h.c2);
+          const hMaxCol = Math.max(h.c1, h.c2);
+          const vCol = v.c1;
+          const vMinRow = Math.min(v.r1, v.r2);
+          const vMaxRow = Math.max(v.r1, v.r2);
+          const intersects = vCol > hMinCol && vCol < hMaxCol && hRow > vMinRow && hRow < vMaxRow;
+          if (intersects) {
+            crossing.add(h.key);
+            crossing.add(v.key);
+          }
+        }
+      }
+      return crossing;
+    }
+
+    function computeIslandDegrees(edgeMap, edgeDefs, islandById) {
+      const degrees = new Map();
+      islandById.forEach((_, id) => degrees.set(id, 0));
+      edgeMap.forEach((count, key) => {
+        if (!count) return;
+        const def = edgeDefs.get(key);
+        degrees.set(def.a, degrees.get(def.a) + count);
+        degrees.set(def.b, degrees.get(def.b) + count);
+      });
+      return degrees;
+    }
+
+    function isConnected(edgeMap, edgeDefs, islandById) {
+      const ids = [...islandById.keys()];
+      if (!ids.length) return false;
+      const graph = new Map(ids.map((id) => [id, new Set()]));
+      edgeMap.forEach((count, key) => {
+        if (!count) return;
+        const def = edgeDefs.get(key);
+        graph.get(def.a).add(def.b);
+        graph.get(def.b).add(def.a);
+      });
+      const start = ids.find((id) => graph.get(id).size > 0) || ids[0];
+      const queue = [start];
+      const visited = new Set([start]);
+      while (queue.length) {
+        const current = queue.shift();
+        graph.get(current).forEach((next) => {
+          if (visited.has(next)) return;
+          visited.add(next);
+          queue.push(next);
+        });
+      }
+      return visited.size === ids.length;
+    }
+
+    function validateState() {
+      const meta = getMeta();
+      const crossingEdges = getCrossingEdges(state.edges, meta.edgeDefs, meta.islandById);
+      const degrees = computeIslandDegrees(state.edges, meta.edgeDefs, meta.islandById);
+      const islandStatus = new Map();
+      const messages = [];
+
+      let allDegreeExact = true;
+      meta.islandById.forEach((island, id) => {
+        const current = degrees.get(id);
+        if (current === island.value) {
+          islandStatus.set(id, "ok");
+        } else {
+          allDegreeExact = false;
+          islandStatus.set(id, current > island.value ? "over" : "under");
+        }
+      });
+
+      if (crossingEdges.size) {
+        messages.push({ type: "warn", text: "Es gibt sich kreuzende Brücken." });
+      } else {
+        messages.push({ type: "ok", text: "Keine Brückenkreuzung erkannt." });
+      }
+
+      if (allDegreeExact) {
+        messages.push({ type: "ok", text: "Alle Inselwerte stimmen genau." });
+      } else {
+        messages.push({ type: "warn", text: "Mindestens eine Insel hat zu viele oder zu wenige Brücken." });
+      }
+
+      const connected = isConnected(state.edges, meta.edgeDefs, meta.islandById);
+      messages.push({ type: connected ? "ok" : "warn", text: connected ? "Alle Inseln sind zusammenhängend." : "Der Graph ist noch nicht vollständig zusammenhängend." });
+
+      const solved = !crossingEdges.size && allDegreeExact && connected;
+      if (solved) {
+        messages.push({ type: "ok", text: "Puzzle gelöst! Sehr gut!" });
+      }
+
+      state.statusMessages = messages;
+      state.islandStatus = islandStatus;
+      state.invalidEdgeSet = crossingEdges;
+      return { solved, crossingEdges, degrees };
+    }
+
+    function setStatus(messages) {
+      state.statusMessages = messages;
+      renderStatus();
+    }
+
+    function resetEdges() {
+      const next = new Map();
+      getMeta().edgeDefs.forEach((_, key) => next.set(key, 0));
+      state.edges = next;
+      state.islandStatus = new Map();
+      state.invalidEdgeSet = new Set();
+    }
+
+    function canToggleTo(edgeKeyValue, nextCount) {
+      if (nextCount === 0) return { ok: true };
+      const meta = getMeta();
+      const candidate = cloneMap(state.edges);
+      candidate.set(edgeKeyValue, nextCount);
+      const crossings = getCrossingEdges(candidate, meta.edgeDefs, meta.islandById);
+      if (crossings.size) {
+        return { ok: false, reason: "Diese Brücke würde eine Kreuzung erzeugen." };
+      }
+      return { ok: true };
+    }
+
+    function toggleBridge(a, b) {
+      const meta = getMeta();
+      const key = edgeKey(a, b);
+      if (!meta.edgeDefs.has(key)) {
+        setStatus([{ type: "warn", text: "Brücken sind nur zwischen direkten Nachbarn erlaubt." }]);
+        return;
+      }
+      const current = state.edges.get(key) || 0;
+      const next = (current + 1) % 3;
+      const check = canToggleTo(key, next);
+      if (!check.ok) {
+        setStatus([{ type: "warn", text: check.reason }]);
+        return;
+      }
+      state.edges.set(key, next);
+      validateState();
+      render();
+    }
+
+    function moveSelection(direction) {
+      const meta = getMeta();
+      const selected = state.selectedIslandId || [...meta.islandById.keys()][0];
+      const source = meta.islandById.get(selected);
+      const candidates = [...meta.islandById.values()].filter((island) => island.id !== source.id);
+      const inDirection = candidates.filter((island) => {
+        if (direction === "left") return island.row === source.row && island.col < source.col;
+        if (direction === "right") return island.row === source.row && island.col > source.col;
+        if (direction === "up") return island.col === source.col && island.row < source.row;
+        return island.col === source.col && island.row > source.row;
+      });
+      if (!inDirection.length) return;
+      inDirection.sort((a, b) => {
+        if (direction === "left" || direction === "right") return Math.abs(a.col - source.col) - Math.abs(b.col - source.col);
+        return Math.abs(a.row - source.row) - Math.abs(b.row - source.row);
+      });
+      state.selectedIslandId = inDirection[0].id;
+      render();
+    }
+
+    function cycleSelection(step) {
+      const ids = [...getMeta().islandById.keys()];
+      if (!ids.length) return;
+      if (!state.selectedIslandId) {
+        state.selectedIslandId = ids[0];
+      } else {
+        const current = ids.indexOf(state.selectedIslandId);
+        const next = (current + step + ids.length) % ids.length;
+        state.selectedIslandId = ids[next];
+      }
+      render();
+    }
+
+    function toggleWithDirection(direction) {
+      const meta = getMeta();
+      if (!state.selectedIslandId) {
+        state.selectedIslandId = [...meta.islandById.keys()][0];
+      }
+      const selected = state.selectedIslandId;
+      const target = meta.neighbors.get(selected)[direction];
+      if (!target) {
+        setStatus([{ type: "warn", text: "In dieser Richtung gibt es keinen direkten Nachbarn." }]);
+        renderStatus();
+        return;
+      }
+      toggleBridge(selected, target);
+    }
+
+    function hint() {
+      const meta = getMeta();
+      for (const [key, count] of meta.solutionMap.entries()) {
+        if ((state.edges.get(key) || 0) !== count) {
+          const candidate = cloneMap(state.edges);
+          candidate.set(key, count);
+          const crossings = getCrossingEdges(candidate, meta.edgeDefs, meta.islandById);
+          if (crossings.size) continue;
+          state.edges.set(key, count);
+          validateState();
+          render();
+          setStatus([{ type: "ok", text: "Hinweis gesetzt: Eine Brücke wurde korrekt angepasst." }]);
+          return;
+        }
+      }
+      setStatus([{ type: "neutral", text: "Kein Hinweis nötig – Puzzle ist bereits vollständig." }]);
+    }
+
+    function showSolution() {
+      const meta = getMeta();
+      const full = new Map();
+      meta.edgeDefs.forEach((_, key) => full.set(key, 0));
+      meta.solutionMap.forEach((count, key) => full.set(key, count));
+      state.edges = full;
+      validateState();
+      render();
+      setStatus([{ type: "ok", text: "Lösung wurde eingeblendet." }]);
+    }
+
+    function nextPuzzle() {
+      state.puzzleIndex = (state.puzzleIndex + 1) % puzzles.length;
+      state.selectedIslandId = null;
+      resetEdges();
+      setStatus([{ type: "neutral", text: "Neues Puzzle geladen." }]);
+      render();
+    }
+
+    function renderStatus() {
+      statusListEl.innerHTML = "";
+      const messages = state.statusMessages.length ? state.statusMessages : [{ type: "neutral", text: "Starte mit einer Brücke oder klicke auf Prüfen." }];
+      messages.forEach((msg) => {
+        const li = document.createElement("li");
+        li.className = msg.type;
+        li.textContent = msg.text;
+        statusListEl.append(li);
+      });
+    }
+
+    function svgCoord(col, row, cell) {
+      return {
+        x: (col + 0.5) * cell,
+        y: (row + 0.5) * cell
+      };
+    }
+
+    function createBridgeLine(svg, x1, y1, x2, y2, offsetX, offsetY, bad) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", String(x1 + offsetX));
+      line.setAttribute("y1", String(y1 + offsetY));
+      line.setAttribute("x2", String(x2 + offsetX));
+      line.setAttribute("y2", String(y2 + offsetY));
+      line.setAttribute("class", "bridge-line");
+      if (bad) line.setAttribute("stroke", "#b63d30");
+      svg.append(line);
+    }
+
+    function render() {
+      const puzzle = getCurrentPuzzle();
+      const meta = getMeta();
+      puzzleLabelEl.textContent = `${puzzle.title} · ${puzzle.rows}×${puzzle.cols}`;
+      boardEl.style.setProperty("--rows", puzzle.rows);
+      boardEl.style.setProperty("--cols", puzzle.cols);
+      boardEl.innerHTML = "";
+
+      const cellSize = Math.max(44, Math.min(64, Math.floor((window.innerWidth - 120) / (puzzle.cols + 1))));
+      boardEl.style.setProperty("--cell", `${cellSize}px`);
+
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("bridges");
+      svg.setAttribute("viewBox", `0 0 ${puzzle.cols * cellSize} ${puzzle.rows * cellSize}`);
+      svg.setAttribute("width", String(puzzle.cols * cellSize));
+      svg.setAttribute("height", String(puzzle.rows * cellSize));
+
+      state.edges.forEach((count, key) => {
+        if (!count) return;
+        const def = meta.edgeDefs.get(key);
+        const a = meta.islandById.get(def.a);
+        const b = meta.islandById.get(def.b);
+        const p1 = svgCoord(a.col, a.row, cellSize);
+        const p2 = svgCoord(b.col, b.row, cellSize);
+        const bad = state.invalidEdgeSet.has(key);
+        if (count === 1) {
+          createBridgeLine(svg, p1.x, p1.y, p2.x, p2.y, 0, 0, bad);
+        } else {
+          const horizontal = a.row === b.row;
+          const dx = horizontal ? 0 : 6;
+          const dy = horizontal ? 6 : 0;
+          createBridgeLine(svg, p1.x, p1.y, p2.x, p2.y, dx, dy, bad);
+          createBridgeLine(svg, p1.x, p1.y, p2.x, p2.y, -dx, -dy, bad);
+        }
+      });
+
+      boardEl.append(svg);
+
+      puzzle.islands.forEach((island) => {
+        const degree = computeIslandDegrees(state.edges, meta.edgeDefs, meta.islandById).get(island.id);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "island";
+        button.style.left = `calc(((${island.col} + 0.5) * var(--cell)))`;
+        button.style.top = `calc(((${island.row} + 0.5) * var(--cell)))`;
+        button.dataset.id = island.id;
+        button.textContent = island.value;
+        button.setAttribute("aria-label", `Insel ${island.id}, Soll ${island.value}, aktuell ${degree}`);
+        if (state.selectedIslandId === island.id) button.classList.add("selected");
+        const degreeState = state.islandStatus.get(island.id);
+        if (degreeState === "ok") button.classList.add("valid");
+        if (degreeState === "over") button.classList.add("invalid");
+        button.addEventListener("click", () => {
+          if (state.selectedIslandId && state.selectedIslandId !== island.id) {
+            toggleBridge(state.selectedIslandId, island.id);
+          } else {
+            state.selectedIslandId = island.id;
+            render();
+          }
+        });
+        boardEl.append(button);
+      });
+
+      renderStatus();
+    }
+
+    function setupKeyboard() {
+      boardEl.addEventListener("keydown", (event) => {
+        const key = event.key;
+        if (key === "Tab") {
+          event.preventDefault();
+          cycleSelection(event.shiftKey ? -1 : 1);
+          return;
+        }
+
+        const arrowMap = {
+          ArrowLeft: "left",
+          ArrowRight: "right",
+          ArrowUp: "up",
+          ArrowDown: "down"
+        };
+
+        if (arrowMap[key]) {
+          event.preventDefault();
+          if (event.shiftKey) {
+            toggleWithDirection(arrowMap[key]);
+          } else {
+            moveSelection(arrowMap[key]);
+          }
+          return;
+        }
+
+        if (key.toLowerCase() === "r") {
+          event.preventDefault();
+          resetBtn.click();
+        } else if (key.toLowerCase() === "p") {
+          event.preventDefault();
+          checkBtn.click();
+        } else if (key.toLowerCase() === "h") {
+          event.preventDefault();
+          hintBtn.click();
+        }
+      });
+    }
+
+    function initialize() {
+      state.puzzleMetas = puzzles.map(buildPuzzleMeta);
+      resetEdges();
+      state.selectedIslandId = puzzles[0].islands[0].id;
+      setStatus([{ type: "neutral", text: "Puzzle geladen. Wähle Inseln per Klick oder Tastatur." }]);
+      render();
+
+      checkBtn.addEventListener("click", () => {
+        validateState();
+        render();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        resetEdges();
+        setStatus([{ type: "neutral", text: "Aktuelles Puzzle wurde zurückgesetzt." }]);
+        render();
+      });
+
+      hintBtn.addEventListener("click", hint);
+      solutionBtn.addEventListener("click", showSolution);
+      nextPuzzleBtn.addEventListener("click", nextPuzzle);
+
+      setupKeyboard();
+      window.addEventListener("resize", render);
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
