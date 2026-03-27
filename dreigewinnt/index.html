@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Drei gewinnt – Mathe mit Pfiff</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #5f6c7b;
+      --line: #d6dde6;
+      --accent: #3457d5;
+      --danger: #a83232;
+      --ok: #1f7a4c;
+      --cell: #eef2f7;
+      --cell-alt: #e6ebf3;
+      --shadow: 0 8px 24px rgba(20, 28, 42, 0.08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.98rem;
+    }
+
+    .tab-bar {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 44px;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+
+    .rules {
+      margin: 0;
+      padding-left: 20px;
+      color: #324152;
+      line-height: 1.5;
+    }
+
+    .game-layout {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .status-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .badge {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafbfd;
+      padding: 10px;
+      font-size: 0.92rem;
+    }
+
+    .badge strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .turn-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid #888;
+      vertical-align: -2px;
+      margin-right: 6px;
+    }
+
+    .turn-dot.white { background: #fff; }
+    .turn-dot.black { background: #111; border-color: #111; }
+
+    .board-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(56px, 1fr));
+      gap: 8px;
+      min-width: 280px;
+      max-width: 460px;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .cell {
+      position: relative;
+      aspect-ratio: 1;
+      border: 1px solid #bec8d6;
+      border-radius: 12px;
+      background: var(--cell);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      min-height: 56px;
+    }
+
+    .cell:nth-child(odd) { background: var(--cell-alt); }
+
+    .cell.selected {
+      outline: 3px solid #f2a62b;
+      outline-offset: -3px;
+      transform: scale(1.01);
+    }
+
+    .cell.possible {
+      box-shadow: inset 0 0 0 3px #2f9d63;
+    }
+
+    .cell.win {
+      background: #ffe8a9;
+      border-color: #d59c18;
+    }
+
+    .piece {
+      width: 70%;
+      height: 70%;
+      border-radius: 50%;
+      border: 2px solid #3a3a3a;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    }
+
+    .piece.white {
+      background: radial-gradient(circle at 35% 30%, #ffffff, #f3f3f3 60%, #d8d8d8);
+      border-color: #8d8d8d;
+    }
+
+    .piece.black {
+      background: radial-gradient(circle at 30% 28%, #4b4b4b, #121212 65%, #020202);
+      border-color: #111;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      min-height: 44px;
+      padding: 10px 16px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: #546071;
+    }
+
+    .btn.primary { background: var(--accent); }
+    .btn.danger { background: var(--danger); }
+    .btn.hidden { display: none; }
+
+    .message {
+      margin-top: 8px;
+      min-height: 24px;
+      font-size: 0.95rem;
+      color: #233041;
+    }
+
+    .message.error { color: var(--danger); }
+    .message.success { color: var(--ok); font-weight: 700; }
+
+    .hint-box {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      color: #415062;
+      font-size: 0.9rem;
+      background: #fbfcfe;
+      line-height: 1.45;
+    }
+
+    @media (min-width: 900px) {
+      .game-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+        align-items: start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <h1>Drei gewinnt</h1>
+      <p class="subtitle">Verschiebe pro Zug genau einen eigenen Stein auf ein freies Nachbarfeld (waagerecht oder senkrecht), um zuerst drei Steine in eine lückenlose Reihe zu bringen.</p>
+      <div class="tab-bar" role="tablist" aria-label="Bereiche">
+        <button class="tab-btn active" id="tabGuide" type="button" role="tab" aria-selected="true" aria-controls="guideSection">Anleitung</button>
+        <button class="tab-btn" id="tabGame" type="button" role="tab" aria-selected="false" aria-controls="gameSection">Spiel</button>
+      </div>
+    </section>
+
+    <section class="panel section active" id="guideSection" role="tabpanel" aria-labelledby="tabGuide">
+      <h2>Anleitung</h2>
+      <ul class="rules">
+        <li>Das Spielfeld ist ein 4 × 4-Raster.</li>
+        <li>Weiß und Schwarz haben jeweils 4 Steine in fester Anfangsaufstellung.</li>
+        <li>Pro Zug: eigenen Stein antippen, dann ein freies Nachbarfeld antippen.</li>
+        <li>Erlaubt sind nur Schritte um genau ein Feld (waagerecht oder senkrecht, nicht diagonal).</li>
+        <li>Ungültige Aktionen werden mit klaren Hinweisen angezeigt.</li>
+        <li>Gewonnen hat, wer zuerst drei eigene Steine waagerecht, senkrecht oder diagonal in direkter Reihe hat.</li>
+      </ul>
+    </section>
+
+    <section class="panel section" id="gameSection" role="tabpanel" aria-labelledby="tabGame">
+      <div class="game-layout">
+        <div>
+          <h2>Spiel</h2>
+          <div class="status-grid">
+            <div class="badge" id="turnBadge"><strong>Aktueller Spieler</strong><span></span></div>
+            <div class="badge"><strong>Status</strong><span id="statusText">Spiel läuft.</span></div>
+          </div>
+
+          <div class="board-wrap">
+            <div class="board" id="board" aria-label="Spielfeld"></div>
+          </div>
+
+          <div class="controls" style="margin-top: 12px;">
+            <button class="btn primary" type="button" id="newGameBtn">Neues Spiel</button>
+            <button class="btn" type="button" id="resetBtn">Zurücksetzen</button>
+            <button class="btn danger hidden" type="button" id="playAgainBtn">Erneut spielen</button>
+          </div>
+
+          <div class="message" id="message" aria-live="polite"></div>
+        </div>
+
+        <aside>
+          <div class="hint-box">
+            <strong>Tipp:</strong> Nach Auswahl eines Steins werden erlaubte Zielfelder grün markiert. Ein Sieg wird gelb hervorgehoben.
+          </div>
+          <div class="hint-box" style="margin-top: 10px;">
+            <strong>Regeln ein-/ausblenden:</strong> Über den Bereich <em>Anleitung</em> oben bleiben die Regeln jederzeit erreichbar.
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const BOARD_SIZE = 4;
+
+    const START_CELLS = [
+      { row: 0, col: 0, piece: 'black' },
+      { row: 0, col: 1, piece: 'white' },
+      { row: 0, col: 2, piece: 'black' },
+      { row: 0, col: 3, piece: 'white' },
+      { row: 1, col: 0, piece: null },
+      { row: 1, col: 1, piece: null },
+      { row: 1, col: 2, piece: null },
+      { row: 1, col: 3, piece: null },
+      { row: 2, col: 0, piece: null },
+      { row: 2, col: 1, piece: null },
+      { row: 2, col: 2, piece: null },
+      { row: 2, col: 3, piece: null },
+      { row: 3, col: 0, piece: 'white' },
+      { row: 3, col: 1, piece: 'black' },
+      { row: 3, col: 2, piece: 'white' },
+      { row: 3, col: 3, piece: 'black' }
+    ];
+
+    const gameState = createInitialState();
+
+    const ui = {
+      board: document.getElementById('board'),
+      message: document.getElementById('message'),
+      statusText: document.getElementById('statusText'),
+      turnBadge: document.getElementById('turnBadge').querySelector('span'),
+      newGameBtn: document.getElementById('newGameBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      playAgainBtn: document.getElementById('playAgainBtn'),
+      tabGuide: document.getElementById('tabGuide'),
+      tabGame: document.getElementById('tabGame'),
+      guideSection: document.getElementById('guideSection'),
+      gameSection: document.getElementById('gameSection')
+    };
+
+    ui.tabGuide.addEventListener('click', () => setActiveTab('guide'));
+    ui.tabGame.addEventListener('click', () => setActiveTab('game'));
+    ui.newGameBtn.addEventListener('click', () => restartGame('Neues Spiel gestartet. Weiß beginnt.'));
+    ui.resetBtn.addEventListener('click', () => restartGame('Spielfeld zurückgesetzt.'));
+    ui.playAgainBtn.addEventListener('click', () => restartGame('Neue Runde gestartet. Weiß beginnt.'));
+
+    function createInitialState() {
+      return {
+        title: 'Drei gewinnt',
+        boardSize: BOARD_SIZE,
+        currentPlayer: 'white',
+        cells: START_CELLS.map(cell => ({ ...cell })),
+        winner: null,
+        selectedPiece: null,
+        possibleMoves: [],
+        winningLine: [],
+        message: ''
+      };
+    }
+
+    function setActiveTab(tab) {
+      const showGuide = tab === 'guide';
+      ui.tabGuide.classList.toggle('active', showGuide);
+      ui.tabGame.classList.toggle('active', !showGuide);
+      ui.tabGuide.setAttribute('aria-selected', String(showGuide));
+      ui.tabGame.setAttribute('aria-selected', String(!showGuide));
+      ui.guideSection.classList.toggle('active', showGuide);
+      ui.gameSection.classList.toggle('active', !showGuide);
+    }
+
+    function restartGame(message) {
+      const fresh = createInitialState();
+      Object.assign(gameState, fresh);
+      setMessage(message, '');
+      render();
+    }
+
+    function isInside(row, col) {
+      return row >= 0 && col >= 0 && row < BOARD_SIZE && col < BOARD_SIZE;
+    }
+
+    function indexOfCell(row, col) {
+      return row * BOARD_SIZE + col;
+    }
+
+    function cellAt(row, col) {
+      return gameState.cells[indexOfCell(row, col)];
+    }
+
+    function getOrthogonalMoves(row, col) {
+      const deltas = [
+        { dr: -1, dc: 0 },
+        { dr: 1, dc: 0 },
+        { dr: 0, dc: -1 },
+        { dr: 0, dc: 1 }
+      ];
+
+      return deltas
+        .map(({ dr, dc }) => ({ row: row + dr, col: col + dc }))
+        .filter(({ row: r, col: c }) => isInside(r, c) && !cellAt(r, c).piece);
+    }
+
+    function switchPlayer() {
+      gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+    }
+
+    function selectPiece(row, col) {
+      gameState.selectedPiece = { row, col };
+      gameState.possibleMoves = getOrthogonalMoves(row, col);
+    }
+
+    function clearSelection() {
+      gameState.selectedPiece = null;
+      gameState.possibleMoves = [];
+    }
+
+    function samePosition(a, b) {
+      return a && b && a.row === b.row && a.col === b.col;
+    }
+
+    function isPossibleMove(row, col) {
+      return gameState.possibleMoves.some(move => move.row === row && move.col === col);
+    }
+
+    function checkWinner() {
+      const directions = [
+        { dr: 0, dc: 1 },
+        { dr: 1, dc: 0 },
+        { dr: 1, dc: 1 },
+        { dr: 1, dc: -1 }
+      ];
+
+      for (let row = 0; row < BOARD_SIZE; row += 1) {
+        for (let col = 0; col < BOARD_SIZE; col += 1) {
+          const startPiece = cellAt(row, col).piece;
+          if (!startPiece) continue;
+
+          for (const { dr, dc } of directions) {
+            const line = [{ row, col }];
+            let valid = true;
+
+            for (let step = 1; step < 3; step += 1) {
+              const r = row + dr * step;
+              const c = col + dc * step;
+              if (!isInside(r, c) || cellAt(r, c).piece !== startPiece) {
+                valid = false;
+                break;
+              }
+              line.push({ row: r, col: c });
+            }
+
+            if (valid) {
+              gameState.winner = startPiece;
+              gameState.winningLine = line;
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    function handleCellTap(row, col) {
+      if (gameState.winner) {
+        setMessage('Das Spiel ist beendet. Nutze „Erneut spielen“.', 'error');
+        return;
+      }
+
+      const targetCell = cellAt(row, col);
+      const selected = gameState.selectedPiece;
+
+      if (!selected) {
+        if (!targetCell.piece) {
+          setMessage('Wähle zuerst einen eigenen Stein aus.', 'error');
+          return;
+        }
+        if (targetCell.piece !== gameState.currentPlayer) {
+          setMessage('Du kannst nur deinen eigenen Stein bewegen.', 'error');
+          return;
+        }
+
+        selectPiece(row, col);
+        if (gameState.possibleMoves.length === 0) {
+          setMessage('Für diesen Stein gibt es kein freies Nachbarfeld.', 'error');
+        } else {
+          setMessage('Stein ausgewählt. Wähle ein markiertes Zielfeld.', '');
+        }
+        render();
+        return;
+      }
+
+      if (samePosition(selected, { row, col })) {
+        clearSelection();
+        setMessage('Auswahl aufgehoben.', '');
+        render();
+        return;
+      }
+
+      if (targetCell.piece === gameState.currentPlayer) {
+        selectPiece(row, col);
+        setMessage('Anderer eigener Stein gewählt.', '');
+        render();
+        return;
+      }
+
+      if (targetCell.piece && targetCell.piece !== gameState.currentPlayer) {
+        setMessage('Dieses Feld ist nicht frei.', 'error');
+        return;
+      }
+
+      const deltaRow = Math.abs(selected.row - row);
+      const deltaCol = Math.abs(selected.col - col);
+      const isOrthogonalStep = deltaRow + deltaCol === 1;
+      if (!isOrthogonalStep || !isPossibleMove(row, col)) {
+        setMessage('Nur waagerechte oder senkrechte Züge um ein Feld sind erlaubt.', 'error');
+        return;
+      }
+
+      const from = cellAt(selected.row, selected.col);
+      from.piece = null;
+      targetCell.piece = gameState.currentPlayer;
+
+      clearSelection();
+      checkWinner();
+
+      if (gameState.winner) {
+        const winnerLabel = gameState.winner === 'white' ? 'Weiß' : 'Schwarz';
+        setMessage(`${winnerLabel} gewinnt.`, 'success');
+        ui.statusText.textContent = 'Spiel beendet.';
+        ui.playAgainBtn.classList.remove('hidden');
+      } else {
+        switchPlayer();
+        setMessage('Zug ausgeführt.', '');
+      }
+
+      render();
+    }
+
+    function setMessage(text, type) {
+      gameState.message = text;
+      ui.message.textContent = text;
+      ui.message.className = `message${type ? ` ${type}` : ''}`;
+    }
+
+    function isWinningCell(row, col) {
+      return gameState.winningLine.some(cell => cell.row === row && cell.col === col);
+    }
+
+    function renderBoard() {
+      ui.board.innerHTML = '';
+
+      gameState.cells.forEach(cell => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cell';
+        button.setAttribute('aria-label', `Feld ${cell.row + 1}-${cell.col + 1}`);
+
+        if (gameState.selectedPiece && samePosition(gameState.selectedPiece, cell)) {
+          button.classList.add('selected');
+        }
+        if (isPossibleMove(cell.row, cell.col)) {
+          button.classList.add('possible');
+        }
+        if (isWinningCell(cell.row, cell.col)) {
+          button.classList.add('win');
+        }
+
+        if (cell.piece) {
+          const piece = document.createElement('span');
+          piece.className = `piece ${cell.piece}`;
+          piece.setAttribute('aria-hidden', 'true');
+          button.appendChild(piece);
+        }
+
+        button.addEventListener('click', () => handleCellTap(cell.row, cell.col));
+        ui.board.appendChild(button);
+      });
+    }
+
+    function renderStatus() {
+      const player = gameState.currentPlayer;
+      const label = player === 'white' ? 'Weiß' : 'Schwarz';
+      ui.turnBadge.innerHTML = `<span class="turn-dot ${player}"></span>${label}`;
+
+      if (gameState.winner) {
+        const winnerLabel = gameState.winner === 'white' ? 'Weiß' : 'Schwarz';
+        ui.statusText.textContent = `Gewinner: ${winnerLabel}`;
+        ui.playAgainBtn.classList.remove('hidden');
+      } else {
+        ui.statusText.textContent = 'Spiel läuft.';
+        ui.playAgainBtn.classList.add('hidden');
+      }
+    }
+
+    function render() {
+      renderBoard();
+      renderStatus();
+      if (!gameState.message) {
+        setMessage('Tippe einen eigenen Stein an, um zu starten.', '');
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
