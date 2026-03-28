@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hitori – Mathe mit Pfiff</title>
+  <style>
+    :root {
+      --bg: #f4f5ef;
+      --panel: #ffffff;
+      --text: #1f2a3a;
+      --muted: #5e6879;
+      --border: #c9d2df;
+      --accent: #2f61d8;
+      --warn: #b63d30;
+      --ok: #23784e;
+      --neutral-cell: #ffffff;
+      --clear-cell: #eaf2ff;
+      --shaded-cell: #2a3448;
+      --shaded-text: #f3f7ff;
+      --active: #ffb93a;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(20, 32, 53, 0.08);
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+      max-width: 72ch;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(290px, 360px);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .btn,
+    select,
+    input[type="password"] {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      color: #fff;
+      background: #4f5d76;
+      font-weight: 700;
+    }
+
+    .btn.primary { background: var(--accent); }
+    .btn.warn { background: #93453b; }
+    .btn.secondary { background: #5e6879; }
+
+    .btn:focus-visible,
+    select:focus-visible,
+    input[type="password"]:focus-visible {
+      outline: 3px solid rgba(47, 97, 216, 0.35);
+      outline-offset: 2px;
+    }
+
+    .puzzle-label {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      color: var(--muted);
+    }
+
+    .board-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f9fbff;
+      overflow: auto;
+      max-height: 74vh;
+      padding: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .board {
+      --size: 5;
+      --cell-size: clamp(48px, min(8vw, 70px), 70px);
+      display: grid;
+      grid-template-columns: repeat(var(--size), var(--cell-size));
+      grid-template-rows: repeat(var(--size), var(--cell-size));
+      gap: 2px;
+      width: max-content;
+      margin: 0 auto;
+      background: #b9c4d6;
+      padding: 2px;
+      border-radius: 8px;
+    }
+
+    .cell {
+      position: relative;
+      border: none;
+      border-radius: 6px;
+      background: var(--neutral-cell);
+      color: var(--text);
+      font-size: clamp(1.05rem, 2.3vw, 1.35rem);
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+      transition: background-color 0.12s, box-shadow 0.12s, transform 0.04s;
+    }
+
+    .cell:active {
+      transform: scale(0.98);
+    }
+
+    .cell[data-state="shaded"] {
+      background: var(--shaded-cell);
+      color: var(--shaded-text);
+    }
+
+    .cell[data-state="clear"] {
+      background: var(--clear-cell);
+    }
+
+    .cell[data-state="clear"]::after {
+      content: "";
+      position: absolute;
+      width: 60%;
+      height: 60%;
+      border-radius: 50%;
+      border: 2px solid rgba(47, 97, 216, 0.65);
+      pointer-events: none;
+    }
+
+    .cell.active {
+      box-shadow: inset 0 0 0 3px var(--active);
+    }
+
+    .cell.row-col-highlight {
+      box-shadow: inset 0 0 0 2px rgba(47, 97, 216, 0.18);
+    }
+
+    .cell.conflict {
+      box-shadow: inset 0 0 0 3px var(--warn);
+    }
+
+    .cell.hint-pulse {
+      animation: pulse 0.8s ease;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: inset 0 0 0 3px rgba(47, 97, 216, 0.9); }
+      100% { box-shadow: inset 0 0 0 3px transparent; }
+    }
+
+    .panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .box h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .box ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+      line-height: 1.45;
+      color: #3f4c62;
+      font-size: 0.93rem;
+    }
+
+    .status {
+      margin: 8px 0 0;
+      min-height: 1.5em;
+      line-height: 1.4;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .status.warn { color: var(--warn); }
+    .status.ok { color: var(--ok); }
+
+    .solution-lock {
+      display: none;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .solution-lock.show {
+      display: flex;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    @media (max-width: 1200px) and (min-width: 768px) {
+      .app { padding: 20px; }
+      .controls { gap: 12px; }
+      .btn, select, input[type="password"] { font-size: 1rem; padding: 12px 16px; }
+      .board { --cell-size: clamp(56px, min(9vw, 74px), 74px); }
+    }
+
+    @media (max-width: 930px) {
+      .layout { grid-template-columns: 1fr; }
+      .board-wrap { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>Hitori</h1>
+      <p class="subtitle">Schwärze Felder so, dass in jeder Zeile und Spalte keine sichtbaren Zahlen doppelt vorkommen. Schwarze Felder dürfen sich orthogonal nicht berühren, und alle sichtbaren Felder müssen zusammenhängend bleiben.</p>
+    </section>
+
+    <section class="layout">
+      <section class="card">
+        <div class="controls" aria-label="Spielsteuerung">
+          <label for="puzzleSelect" class="sr-only">Rätsel wählen</label>
+          <select id="puzzleSelect" aria-label="Rätsel auswählen"></select>
+          <button class="btn primary" id="checkBtn" aria-label="Puzzle prüfen">Prüfen</button>
+          <button class="btn warn" id="resetBtn" aria-label="Puzzle zurücksetzen">Zurücksetzen</button>
+          <button class="btn secondary" id="hintBtn" aria-label="Hinweis geben">Hinweis</button>
+          <button class="btn secondary" id="solutionBtn" aria-label="Lösung anzeigen">Lösung anzeigen</button>
+        </div>
+        <div id="solutionLock" class="solution-lock" aria-live="polite">
+          <label for="solutionPassword">Passwort:</label>
+          <input id="solutionPassword" type="password" autocomplete="off" placeholder="Passwort eingeben">
+          <button class="btn secondary" id="solutionApplyBtn">Anzeigen</button>
+        </div>
+        <h2 class="puzzle-label" id="puzzleLabel"></h2>
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="Hitori Spielfeld"></div>
+        </div>
+      </section>
+
+      <aside class="card panel">
+        <section class="box">
+          <h2>Anleitung</h2>
+          <ul>
+            <li>Klick/Tap auf eine Zelle: neutral → schwarz → klar markiert → neutral.</li>
+            <li>Nur nicht geschwärzte Zellen zählen als sichtbar (neutral + klar).</li>
+            <li>Sichtbare Zahlen dürfen pro Zeile/Spalte nicht doppelt sein.</li>
+            <li>Schwarze Zellen dürfen sich nicht orthogonal berühren.</li>
+            <li>Alle sichtbaren Zellen müssen eine zusammenhängende Fläche bilden.</li>
+          </ul>
+        </section>
+
+        <section class="box" aria-live="polite">
+          <h2>Status</h2>
+          <p id="status" class="status">Puzzle geladen.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const CELL_STATES = Object.freeze({
+      NEUTRAL: "neutral",
+      SHADED: "shaded",
+      CLEAR: "clear"
+    });
+
+    const SOLUTION_PASSWORD = "lehrerlsg";
+
+    const puzzles = [
+      {
+        id: "hitori-5x5-01",
+        title: "5×5 – Kompakt",
+        size: 5,
+        grid: [
+          [2, 2, 3, 4, 4],
+          [2, 4, 4, 5, 1],
+          [3, 4, 5, 1, 1],
+          [4, 5, 1, 2, 3],
+          [1, 1, 2, 4, 4]
+        ],
+        solution: {
+          shaded: [
+            [0, 0],
+            [0, 4],
+            [1, 1],
+            [2, 4],
+            [4, 0],
+            [4, 3]
+          ]
+        }
+      },
+      {
+        id: "hitori-6x6-01",
+        title: "6×6 – Anspruchsvoll",
+        size: 6,
+        grid: [
+          [2, 2, 3, 4, 5, 5],
+          [2, 4, 4, 5, 6, 1],
+          [3, 4, 6, 6, 1, 1],
+          [4, 6, 6, 2, 2, 3],
+          [5, 6, 1, 2, 3, 4],
+          [1, 1, 2, 4, 4, 5]
+        ],
+        solution: {
+          shaded: [
+            [0, 0],
+            [2, 2],
+            [0, 5],
+            [1, 1],
+            [2, 5],
+            [3, 1],
+            [3, 3],
+            [5, 0],
+            [5, 3]
+          ]
+        }
+      },
+      {
+        id: "hitori-8x8-01",
+        title: "8×8 – Profi",
+        size: 8,
+        grid: [
+          [2, 2, 4, 4, 5, 7, 7, 7],
+          [2, 3, 4, 6, 6, 7, 8, 1],
+          [3, 5, 5, 6, 8, 8, 1, 1],
+          [5, 5, 6, 7, 8, 2, 2, 3],
+          [5, 7, 7, 1, 1, 2, 4, 4],
+          [6, 7, 1, 1, 2, 4, 4, 5],
+          [7, 8, 1, 2, 3, 4, 5, 5],
+          [8, 1, 3, 3, 5, 5, 6, 7]
+        ],
+        solution: {
+          shaded: [
+            [0, 0],
+            [0, 2],
+            [0, 5],
+            [0, 7],
+            [1, 3],
+            [2, 1],
+            [2, 4],
+            [2, 7],
+            [3, 0],
+            [3, 5],
+            [4, 1],
+            [4, 3],
+            [4, 6],
+            [5, 2],
+            [5, 5],
+            [6, 7],
+            [7, 2],
+            [7, 4]
+          ]
+        }
+      }
+    ];
+
+    const appState = {
+      puzzleIndex: 0,
+      puzzle: null,
+      currentState: [],
+      selectedCell: null,
+      validationState: null,
+      hintCellKey: null,
+      solutionShown: false
+    };
+
+    const boardEl = document.getElementById("board");
+    const puzzleLabelEl = document.getElementById("puzzleLabel");
+    const puzzleSelectEl = document.getElementById("puzzleSelect");
+    const statusEl = document.getElementById("status");
+    const solutionBtn = document.getElementById("solutionBtn");
+    const solutionLockEl = document.getElementById("solutionLock");
+    const solutionPasswordEl = document.getElementById("solutionPassword");
+    const solutionApplyBtn = document.getElementById("solutionApplyBtn");
+
+    function coordKey(row, col) {
+      return `${row},${col}`;
+    }
+
+    function parseCoordKey(key) {
+      const [row, col] = key.split(",").map(Number);
+      return { row, col };
+    }
+
+    function getOrthogonalNeighbors(row, col, size) {
+      const candidates = [
+        [row - 1, col],
+        [row + 1, col],
+        [row, col - 1],
+        [row, col + 1]
+      ];
+      return candidates.filter(([r, c]) => r >= 0 && c >= 0 && r < size && c < size);
+    }
+
+    function deepCopyState(state) {
+      return state.map((row) => row.slice());
+    }
+
+    function createInitialState(size) {
+      return Array.from({ length: size }, () => Array.from({ length: size }, () => CELL_STATES.NEUTRAL));
+    }
+
+    function isVisibleState(stateValue) {
+      return stateValue === CELL_STATES.NEUTRAL || stateValue === CELL_STATES.CLEAR;
+    }
+
+    function getSolutionShadedSet(puzzle) {
+      return new Set((puzzle.solution?.shaded || []).map(([r, c]) => coordKey(r, c)));
+    }
+
+    function setStatus(message, type = "neutral") {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type === "warn" ? "warn" : type === "ok" ? "ok" : ""}`.trim();
+    }
+
+    function validatePuzzleDefinition(puzzle) {
+      if (!puzzle || typeof puzzle !== "object") {
+        return { ok: false, message: "Puzzle-Daten fehlen." };
+      }
+      const { size, grid, solution } = puzzle;
+      if (!Number.isInteger(size) || size <= 0) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: size muss > 0 sein.` };
+      }
+      if (!Array.isArray(grid) || grid.length !== size) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: grid muss ${size} Zeilen haben.` };
+      }
+      for (let row = 0; row < size; row += 1) {
+        if (!Array.isArray(grid[row]) || grid[row].length !== size) {
+          return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Zeile ${row + 1} ist nicht quadratisch.` };
+        }
+        for (let col = 0; col < size; col += 1) {
+          const val = grid[row][col];
+          if (!Number.isInteger(val) || val <= 0) {
+            return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Nur positive Ganzzahlen erlaubt (Zeile ${row + 1}, Spalte ${col + 1}).` };
+          }
+        }
+      }
+      if (!solution || !Array.isArray(solution.shaded)) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: solution.shaded fehlt.` };
+      }
+
+      const shadedKeys = new Set();
+      for (const coord of solution.shaded) {
+        if (!Array.isArray(coord) || coord.length !== 2) {
+          return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung enthält ungültige Koordinate.` };
+        }
+        const [row, col] = coord;
+        if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= size || col >= size) {
+          return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung enthält Koordinate außerhalb des Brettes.` };
+        }
+        const key = coordKey(row, col);
+        if (shadedKeys.has(key)) {
+          return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung enthält Duplikat bei (${row + 1}, ${col + 1}).` };
+        }
+        shadedKeys.add(key);
+      }
+
+      for (const key of shadedKeys) {
+        const { row, col } = parseCoordKey(key);
+        const neighbors = getOrthogonalNeighbors(row, col, size);
+        if (neighbors.some(([nr, nc]) => shadedKeys.has(coordKey(nr, nc)))) {
+          return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung hat orthogonal benachbarte schwarze Felder.` };
+        }
+      }
+
+      const solutionState = createInitialState(size);
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
+          solutionState[row][col] = shadedKeys.has(coordKey(row, col)) ? CELL_STATES.SHADED : CELL_STATES.CLEAR;
+        }
+      }
+      const validation = getValidationState(puzzle.grid, solutionState);
+      if (!validation.complete || !validation.solved) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung ist nicht vollständig oder verletzt Regeln.` };
+      }
+      if (validation.connectivityConflict) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Sichtbare Lösungszellen sind nicht zusammenhängend.` };
+      }
+      if (validation.rowConflicts.size || validation.colConflicts.size || validation.adjacentShadedConflicts.size) {
+        return { ok: false, message: `Puzzle ${puzzle.id || "?"}: Lösung verletzt Hitori-Regeln.` };
+      }
+      return { ok: true };
+    }
+
+    function validateRows(grid, state) {
+      const rowConflicts = new Set();
+      const rowMessages = [];
+
+      for (let row = 0; row < grid.length; row += 1) {
+        const valueMap = new Map();
+        for (let col = 0; col < grid.length; col += 1) {
+          if (!isVisibleState(state[row][col])) continue;
+          const value = grid[row][col];
+          const list = valueMap.get(value) || [];
+          list.push(col);
+          valueMap.set(value, list);
+        }
+
+        for (const [value, cols] of valueMap.entries()) {
+          if (cols.length > 1) {
+            cols.forEach((col) => rowConflicts.add(coordKey(row, col)));
+            rowMessages.push(`Zeile ${row + 1} enthält doppelte sichtbare ${value}en.`);
+          }
+        }
+      }
+      return { rowConflicts, rowMessages };
+    }
+
+    function validateCols(grid, state) {
+      const colConflicts = new Set();
+      const colMessages = [];
+
+      for (let col = 0; col < grid.length; col += 1) {
+        const valueMap = new Map();
+        for (let row = 0; row < grid.length; row += 1) {
+          if (!isVisibleState(state[row][col])) continue;
+          const value = grid[row][col];
+          const list = valueMap.get(value) || [];
+          list.push(row);
+          valueMap.set(value, list);
+        }
+
+        for (const [value, rows] of valueMap.entries()) {
+          if (rows.length > 1) {
+            rows.forEach((row) => colConflicts.add(coordKey(row, col)));
+            colMessages.push(`Spalte ${col + 1} enthält doppelte sichtbare ${value}en.`);
+          }
+        }
+      }
+      return { colConflicts, colMessages };
+    }
+
+    function validateAdjacentShaded(state) {
+      const size = state.length;
+      const adjacentShadedConflicts = new Set();
+      let hasConflict = false;
+
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
+          if (state[row][col] !== CELL_STATES.SHADED) continue;
+          for (const [nr, nc] of getOrthogonalNeighbors(row, col, size)) {
+            if (state[nr][nc] === CELL_STATES.SHADED) {
+              adjacentShadedConflicts.add(coordKey(row, col));
+              adjacentShadedConflicts.add(coordKey(nr, nc));
+              hasConflict = true;
+            }
+          }
+        }
+      }
+      return {
+        adjacentShadedConflicts,
+        message: hasConflict ? "Zwei schwarze Felder berühren sich orthogonal." : null
+      };
+    }
+
+    function validateConnectivity(state) {
+      const size = state.length;
+      const visibleCells = [];
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
+          if (isVisibleState(state[row][col])) visibleCells.push([row, col]);
+        }
+      }
+      if (!visibleCells.length) {
+        return { connectivityConflict: true, message: "Es muss mindestens ein sichtbares Feld geben." };
+      }
+
+      const queue = [visibleCells[0]];
+      const seen = new Set([coordKey(visibleCells[0][0], visibleCells[0][1])]);
+
+      while (queue.length) {
+        const [row, col] = queue.shift();
+        for (const [nr, nc] of getOrthogonalNeighbors(row, col, size)) {
+          const key = coordKey(nr, nc);
+          if (seen.has(key) || !isVisibleState(state[nr][nc])) continue;
+          seen.add(key);
+          queue.push([nr, nc]);
+        }
+      }
+
+      const connectivityConflict = seen.size !== visibleCells.length;
+      return {
+        connectivityConflict,
+        message: connectivityConflict ? "Die sichtbaren Felder sind nicht zusammenhängend." : null
+      };
+    }
+
+    function getValidationState(grid, state) {
+      const validStateValues = new Set(Object.values(CELL_STATES));
+      for (const row of state) {
+        for (const cellValue of row) {
+          if (!validStateValues.has(cellValue)) {
+            throw new Error("Ungültiger Zellzustand erkannt.");
+          }
+        }
+      }
+
+      const rows = validateRows(grid, state);
+      const cols = validateCols(grid, state);
+      const adjacent = validateAdjacentShaded(state);
+      const connectivity = validateConnectivity(state);
+
+      const complete = state.every((row) => row.every((cell) => cell !== CELL_STATES.NEUTRAL));
+      const solved = complete
+        && rows.rowConflicts.size === 0
+        && cols.colConflicts.size === 0
+        && adjacent.adjacentShadedConflicts.size === 0
+        && !connectivity.connectivityConflict;
+
+      return {
+        rowConflicts: rows.rowConflicts,
+        colConflicts: cols.colConflicts,
+        adjacentShadedConflicts: adjacent.adjacentShadedConflicts,
+        connectivityConflict: connectivity.connectivityConflict,
+        complete,
+        solved,
+        messages: [
+          ...rows.rowMessages,
+          ...cols.colMessages,
+          ...(adjacent.message ? [adjacent.message] : []),
+          ...(connectivity.message ? [connectivity.message] : []),
+          ...(!complete ? ["Es sind noch unentschiedene Felder vorhanden."] : [])
+        ]
+      };
+    }
+
+    function updatePuzzleSelect() {
+      puzzleSelectEl.innerHTML = "";
+      puzzles.forEach((puzzle, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = puzzle.title;
+        puzzleSelectEl.append(option);
+      });
+      puzzleSelectEl.value = String(appState.puzzleIndex);
+    }
+
+    function renderBoard() {
+      const { puzzle, currentState, selectedCell } = appState;
+      if (!puzzle) {
+        boardEl.replaceChildren();
+        return;
+      }
+
+      boardEl.style.setProperty("--size", String(puzzle.size));
+      boardEl.replaceChildren();
+
+      const conflictKeys = new Set([
+        ...(appState.validationState ? appState.validationState.rowConflicts : []),
+        ...(appState.validationState ? appState.validationState.colConflicts : []),
+        ...(appState.validationState ? appState.validationState.adjacentShadedConflicts : [])
+      ]);
+
+      for (let row = 0; row < puzzle.size; row += 1) {
+        for (let col = 0; col < puzzle.size; col += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "cell";
+          button.dataset.row = String(row);
+          button.dataset.col = String(col);
+          button.dataset.state = currentState[row][col];
+          button.textContent = String(puzzle.grid[row][col]);
+          button.setAttribute("role", "gridcell");
+          button.setAttribute("aria-label", `Zeile ${row + 1}, Spalte ${col + 1}, Zahl ${puzzle.grid[row][col]}, Zustand ${currentState[row][col]}`);
+
+          if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+            button.classList.add("active");
+          }
+          if (selectedCell && (selectedCell.row === row || selectedCell.col === col)) {
+            button.classList.add("row-col-highlight");
+          }
+          if (conflictKeys.has(coordKey(row, col))) {
+            button.classList.add("conflict");
+          }
+          if (appState.hintCellKey === coordKey(row, col)) {
+            button.classList.add("hint-pulse");
+            button.addEventListener("animationend", () => {
+              appState.hintCellKey = null;
+              button.classList.remove("hint-pulse");
+            }, { once: true });
+          }
+
+          button.addEventListener("click", () => {
+            handleCellClick(row, col);
+          });
+
+          boardEl.append(button);
+        }
+      }
+    }
+
+    function renderControls() {
+      if (!appState.puzzle) return;
+      puzzleLabelEl.textContent = `${appState.puzzle.title} (${appState.puzzle.size}×${appState.puzzle.size})`;
+      puzzleSelectEl.value = String(appState.puzzleIndex);
+    }
+
+    function cycleCellState(row, col) {
+      const current = appState.currentState[row][col];
+      if (current === CELL_STATES.NEUTRAL) return CELL_STATES.SHADED;
+      if (current === CELL_STATES.SHADED) return CELL_STATES.CLEAR;
+      return CELL_STATES.NEUTRAL;
+    }
+
+    function setCellState(row, col, state) {
+      if (!Object.values(CELL_STATES).includes(state)) return;
+      if (!isInsideBoard(row, col, appState.puzzle.size)) return;
+      appState.currentState[row][col] = state;
+    }
+
+    function isInsideBoard(row, col, size) {
+      return Number.isInteger(row) && Number.isInteger(col) && row >= 0 && col >= 0 && row < size && col < size;
+    }
+
+    function handleCellClick(row, col) {
+      if (!appState.puzzle || !isInsideBoard(row, col, appState.puzzle.size)) return;
+      const nextState = cycleCellState(row, col);
+      setCellState(row, col, nextState);
+      appState.selectedCell = { row, col };
+      appState.validationState = null;
+      appState.solutionShown = false;
+      renderBoard();
+      setStatus("Zelle aktualisiert.");
+    }
+
+    function handleKeyDown(event) {
+      if (!appState.puzzle) return;
+      const size = appState.puzzle.size;
+
+      if (!appState.selectedCell) {
+        appState.selectedCell = { row: 0, col: 0 };
+      }
+
+      let { row, col } = appState.selectedCell;
+      let moved = false;
+
+      if (event.key === "ArrowUp") { row = Math.max(0, row - 1); moved = true; }
+      if (event.key === "ArrowDown") { row = Math.min(size - 1, row + 1); moved = true; }
+      if (event.key === "ArrowLeft") { col = Math.max(0, col - 1); moved = true; }
+      if (event.key === "ArrowRight") { col = Math.min(size - 1, col + 1); moved = true; }
+
+      if (moved) {
+        event.preventDefault();
+        appState.selectedCell = { row, col };
+        renderBoard();
+        return;
+      }
+
+      if ([" ", "Enter"].includes(event.key)) {
+        event.preventDefault();
+        handleCellClick(row, col);
+      }
+    }
+
+    function resetPuzzle() {
+      if (!appState.puzzle) return;
+      appState.currentState = createInitialState(appState.puzzle.size);
+      appState.selectedCell = null;
+      appState.validationState = null;
+      appState.hintCellKey = null;
+      appState.solutionShown = false;
+      renderBoard();
+      setStatus("Puzzle zurückgesetzt.");
+    }
+
+    function checkPuzzle() {
+      if (!appState.puzzle) return;
+      appState.validationState = getValidationState(appState.puzzle.grid, appState.currentState);
+      renderBoard();
+
+      const validation = appState.validationState;
+      if (validation.solved) {
+        setStatus("Rätsel korrekt gelöst.", "ok");
+        return;
+      }
+
+      if (validation.messages.length) {
+        setStatus(validation.messages[0], "warn");
+      } else {
+        setStatus("Noch nicht korrekt gelöst.", "warn");
+      }
+    }
+
+    function applySolutionState() {
+      const size = appState.puzzle.size;
+      const shadedSet = getSolutionShadedSet(appState.puzzle);
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
+          appState.currentState[row][col] = shadedSet.has(coordKey(row, col)) ? CELL_STATES.SHADED : CELL_STATES.CLEAR;
+        }
+      }
+      appState.validationState = getValidationState(appState.puzzle.grid, appState.currentState);
+      appState.solutionShown = true;
+      renderBoard();
+      setStatus("Lösung ist eingeblendet. Eigene Eingaben wurden überschrieben.", "ok");
+    }
+
+    function giveHint() {
+      if (!appState.puzzle?.solution) {
+        setStatus("Für dieses Puzzle ist kein Hinweis verfügbar.", "warn");
+        return;
+      }
+
+      const shadedSet = getSolutionShadedSet(appState.puzzle);
+      const size = appState.puzzle.size;
+
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
+          const key = coordKey(row, col);
+          const shouldShade = shadedSet.has(key);
+          const current = appState.currentState[row][col];
+
+          if (shouldShade && current !== CELL_STATES.SHADED) {
+            appState.currentState[row][col] = CELL_STATES.SHADED;
+            appState.selectedCell = { row, col };
+            appState.hintCellKey = key;
+            appState.validationState = null;
+            renderBoard();
+            setStatus("Diese Zelle sollte geschwärzt werden.");
+            return;
+          }
+
+          if (!shouldShade && current === CELL_STATES.SHADED) {
+            appState.currentState[row][col] = CELL_STATES.CLEAR;
+            appState.selectedCell = { row, col };
+            appState.hintCellKey = key;
+            appState.validationState = null;
+            renderBoard();
+            setStatus("Diese Zelle sollte sichtbar bleiben.");
+            return;
+          }
+
+          if (!shouldShade && current === CELL_STATES.NEUTRAL) {
+            appState.currentState[row][col] = CELL_STATES.CLEAR;
+            appState.selectedCell = { row, col };
+            appState.hintCellKey = key;
+            appState.validationState = null;
+            renderBoard();
+            setStatus("Diese Zelle sollte sichtbar bleiben.");
+            return;
+          }
+        }
+      }
+
+      setStatus("Kein weiterer Hinweis nötig – aktueller Zustand passt zur Lösung.", "ok");
+    }
+
+    function toggleSolutionPasswordInput() {
+      solutionLockEl.classList.toggle("show");
+      if (solutionLockEl.classList.contains("show")) {
+        solutionPasswordEl.value = "";
+        solutionPasswordEl.focus();
+      }
+    }
+
+    function revealSolution() {
+      if (solutionPasswordEl.value !== SOLUTION_PASSWORD) {
+        setStatus("Falsches Passwort für die Lösung.", "warn");
+        return;
+      }
+      solutionLockEl.classList.remove("show");
+      applySolutionState();
+    }
+
+    function loadPuzzle(puzzleIndex) {
+      const puzzle = puzzles[puzzleIndex];
+      const validation = validatePuzzleDefinition(puzzle);
+      if (!validation.ok) {
+        appState.puzzle = null;
+        boardEl.replaceChildren();
+        setStatus(validation.message, "warn");
+        return;
+      }
+
+      appState.puzzleIndex = puzzleIndex;
+      appState.puzzle = puzzle;
+      appState.currentState = createInitialState(puzzle.size);
+      appState.selectedCell = null;
+      appState.validationState = null;
+      appState.hintCellKey = null;
+      appState.solutionShown = false;
+      renderControls();
+      renderBoard();
+      setStatus("Puzzle geladen.");
+    }
+
+    document.getElementById("checkBtn").addEventListener("click", checkPuzzle);
+    document.getElementById("resetBtn").addEventListener("click", resetPuzzle);
+    document.getElementById("hintBtn").addEventListener("click", giveHint);
+    solutionBtn.addEventListener("click", toggleSolutionPasswordInput);
+    solutionApplyBtn.addEventListener("click", revealSolution);
+    solutionPasswordEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") revealSolution();
+    });
+    puzzleSelectEl.addEventListener("change", (event) => {
+      loadPuzzle(Number(event.target.value));
+      solutionLockEl.classList.remove("show");
+    });
+    document.addEventListener("keydown", handleKeyDown);
+
+    (function init() {
+      updatePuzzleSelect();
+      loadPuzzle(0);
+    }());
+  </script>
+</body>
+</html>
