@@ -222,7 +222,7 @@
   <main class="app">
     <section class="card">
       <h1>Hashi (Brückenrätsel)</h1>
-      <p class="subtitle">Verbinde Inseln mit Brücken nach den Regeln. Ziel: Alle Zahlen erfüllen und ein zusammenhängendes Netzwerk bilden.</p>
+      <p class="subtitle">Verbinde die Inseln mit Brücken. Ziel: Die Brückenanzahl entspricht der jeweiligen Inselzahl und alle Inseln sind verbunden.</p>
     </section>
 
     <section class="layout">
@@ -296,33 +296,33 @@
         rows: 7,
         cols: 7,
         islands: [
-          { id: "A", row: 0, col: 0, value: 1 },
-          { id: "B", row: 0, col: 3, value: 3 },
-          { id: "C", row: 0, col: 6, value: 3 },
-          { id: "D", row: 2, col: 0, value: 4 },
-          { id: "E", row: 2, col: 3, value: 4 },
-          { id: "F", row: 2, col: 6, value: 1 },
-          { id: "G", row: 4, col: 0, value: 4 },
-          { id: "H", row: 4, col: 3, value: 8 },
-          { id: "I", row: 4, col: 6, value: 4 },
-          { id: "J", row: 6, col: 0, value: 2 },
-          { id: "K", row: 6, col: 3, value: 5 },
-          { id: "L", row: 6, col: 6, value: 3 }
+          { id: "A", row: 0, col: 0, value: 3 },
+          { id: "B", row: 0, col: 6, value: 3 },
+          { id: "C", row: 1, col: 1, value: 2 },
+          { id: "D", row: 1, col: 4, value: 4 },
+          { id: "E", row: 2, col: 6, value: 4 },
+          { id: "F", row: 3, col: 0, value: 5 },
+          { id: "G", row: 3, col: 4, value: 3 },
+          { id: "H", row: 4, col: 1, value: 1 },
+          { id: "I", row: 4, col: 3, value: 4 },
+          { id: "J", row: 4, col: 5, value: 2 },
+          { id: "K", row: 6, col: 0, value: 2 },
+          { id: "L", row: 6, col: 3, value: 3 },
+          { id: "M", row: 6, col: 6, value: 3 }
         ],
         solution: [
-          { a: "B", b: "C", count: 2 },
-          { a: "D", b: "E", count: 1 },
-          { a: "G", b: "H", count: 2 },
-          { a: "H", b: "I", count: 2 },
-          { a: "J", b: "K", count: 2 },
-          { a: "K", b: "L", count: 1 },
-          { a: "A", b: "D", count: 1 },
-          { a: "D", b: "G", count: 2 },
-          { a: "B", b: "E", count: 1 },
-          { a: "E", b: "H", count: 2 },
-          { a: "H", b: "K", count: 2 },
-          { a: "C", b: "F", count: 1 },
-          { a: "I", b: "L", count: 2 }
+          { a: "A", b: "B", count: 1 },
+          { a: "A", b: "F", count: 2 },
+          { a: "F", b: "K", count: 2 },
+          { a: "F", b: "G", count: 1 },
+          { a: "G", b: "D", count: 2 },
+          { a: "D", b: "C", count: 2 },
+          { a: "B", b: "E", count: 2 },
+          { a: "E", b: "M", count: 2 },
+          { a: "M", b: "L", count: 2 },
+          { a: "L", b: "I", count: 1 },
+          { a: "I", b: "H", count: 1 },
+          { a: "I", b: "J", count: 2 },
         ]
       },
       {
