@@ -718,6 +718,7 @@
         return;
       }
       state.edges.set(key, next);
+      state.selectedIslandId = null;
       validateState();
       render();
     }
@@ -857,8 +858,8 @@
     function initialize() {
       state.puzzleMetas = puzzles.map(buildPuzzleMeta);
       resetEdges();
-      state.selectedIslandId = puzzles[0].islands[0].id;
-      setStatus([{ type: "neutral", text: "Puzzle geladen. Verbinde Inseln per Tipp auf dem Touchscreen." }]);
+      state.selectedIslandId = null;
+      setStatus([{ type: "neutral", text: "Puzzle geladen. Wähle eine Insel und tippe dann auf eine Nachbarinsel, um eine Brücke zu setzen." }]);
       render();
 
       checkBtn.addEventListener("click", () => {
