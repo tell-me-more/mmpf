@@ -195,14 +195,21 @@
     .status .warn { color: var(--warn); }
     .status .neutral { color: var(--muted); }
 
-    .kbd {
-      display: inline-block;
-      border: 1px solid #9ba8be;
-      border-radius: 5px;
-      padding: 0 6px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.85rem;
-      background: #f4f7ff;
+    .btn,
+    .island {
+      touch-action: manipulation;
+    }
+
+    .board-wrap {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 1200px) and (min-width: 768px) {
+      .app { padding: 20px; }
+      .controls { gap: 12px; }
+      .btn { font-size: 1rem; padding: 12px 16px; }
+      .board { --cell: clamp(56px, min(9vw, 72px), 72px); }
+      .island { width: calc(var(--cell) * 0.7); height: calc(var(--cell) * 0.7); }
     }
 
     @media (max-width: 930px) {
@@ -229,7 +236,7 @@
         </div>
         <h2 class="puzzle-label" id="puzzleLabel"></h2>
         <div class="board-wrap">
-          <div id="board" class="board" tabindex="0" role="application" aria-label="Hashi Spielfeld"></div>
+          <div id="board" class="board" aria-label="Hashi Spielfeld"></div>
         </div>
       </section>
 
@@ -246,16 +253,6 @@
           </ul>
         </section>
 
-        <section class="box">
-          <h2>Tastatur</h2>
-          <ul>
-            <li><span class="kbd">Tab</span>: nächste Insel auswählen</li>
-            <li><span class="kbd">Shift</span> + Pfeiltaste: Brücke zu direktem Nachbarn schalten (0→1→2→0)</li>
-            <li>Pfeiltasten: Auswahl in Richtung bewegen</li>
-            <li><span class="kbd">R</span>: Reset, <span class="kbd">P</span>: Prüfen, <span class="kbd">H</span>: Hinweis</li>
-          </ul>
-        </section>
-
         <section class="box" aria-live="polite">
           <h2>Status</h2>
           <ul id="statusList" class="status"></ul>
@@ -267,79 +264,100 @@
   <script>
     const puzzles = [
       {
-        title: "Puzzle 1 (leicht)",
-        rows: 5,
-        cols: 5,
-        islands: [
-          { id: "A", row: 0, col: 0, value: 2 },
-          { id: "B", row: 0, col: 2, value: 3 },
-          { id: "C", row: 0, col: 4, value: 2 },
-          { id: "D", row: 2, col: 0, value: 2 },
-          { id: "E", row: 2, col: 2, value: 5 },
-          { id: "F", row: 2, col: 4, value: 2 },
-          { id: "G", row: 4, col: 2, value: 1 }
-        ],
-        solution: [
-          { a: "A", b: "B", count: 1 },
-          { a: "A", b: "D", count: 1 },
-          { a: "B", b: "C", count: 1 },
-          { a: "B", b: "E", count: 2 },
-          { a: "C", b: "F", count: 1 },
-          { a: "D", b: "E", count: 1 },
-          { a: "E", b: "F", count: 1 },
-          { a: "E", b: "G", count: 1 }
-        ]
-      },
-      {
-        title: "Puzzle 2 (mittel)",
-        rows: 6,
-        cols: 6,
-        islands: [
-          { id: "A", row: 0, col: 1, value: 2 },
-          { id: "B", row: 0, col: 4, value: 2 },
-          { id: "C", row: 2, col: 1, value: 4 },
-          { id: "D", row: 2, col: 4, value: 4 },
-          { id: "E", row: 4, col: 1, value: 2 },
-          { id: "F", row: 4, col: 4, value: 2 },
-          { id: "G", row: 2, col: 0, value: 1 },
-          { id: "H", row: 2, col: 5, value: 1 }
-        ],
-        solution: [
-          { a: "A", b: "B", count: 1 },
-          { a: "A", b: "C", count: 1 },
-          { a: "B", b: "D", count: 1 },
-          { a: "C", b: "D", count: 1 },
-          { a: "C", b: "E", count: 1 },
-          { a: "C", b: "G", count: 1 },
-          { a: "D", b: "F", count: 1 },
-          { a: "D", b: "H", count: 1 },
-          { a: "E", b: "F", count: 1 }
-        ]
-      },
-      {
-        title: "Puzzle 3 (knifflig)",
+        title: "Puzzle 1 (anspruchsvoll)",
         rows: 7,
         cols: 7,
         islands: [
-          { id: "A", row: 0, col: 3, value: 2 },
-          { id: "B", row: 2, col: 1, value: 3 },
-          { id: "C", row: 2, col: 3, value: 5 },
-          { id: "D", row: 2, col: 5, value: 3 },
-          { id: "E", row: 4, col: 3, value: 5 },
-          { id: "F", row: 6, col: 3, value: 2 },
-          { id: "G", row: 4, col: 1, value: 3 },
-          { id: "H", row: 4, col: 5, value: 3 }
+          { id: "A", row: 0, col: 0, value: 4 },
+          { id: "B", row: 0, col: 3, value: 5 },
+          { id: "C", row: 0, col: 6, value: 2 },
+          { id: "D", row: 3, col: 0, value: 5 },
+          { id: "E", row: 3, col: 3, value: 5 },
+          { id: "F", row: 3, col: 6, value: 5 },
+          { id: "G", row: 6, col: 0, value: 4 },
+          { id: "H", row: 6, col: 3, value: 2 },
+          { id: "I", row: 6, col: 6, value: 2 }
         ],
         solution: [
-          { a: "A", b: "C", count: 2 },
+          { a: "A", b: "B", count: 2 },
+          { a: "A", b: "D", count: 2 },
           { a: "B", b: "C", count: 1 },
-          { a: "B", b: "G", count: 2 },
-          { a: "C", b: "D", count: 1 },
-          { a: "C", b: "E", count: 1 },
-          { a: "D", b: "H", count: 2 },
+          { a: "B", b: "E", count: 2 },
+          { a: "D", b: "E", count: 1 },
+          { a: "D", b: "G", count: 2 },
           { a: "E", b: "F", count: 2 },
-          { a: "E", b: "G", count: 1 },
-          { a: "E", b: "H", count: 1 }
+          { a: "C", b: "F", count: 1 },
+          { a: "F", b: "I", count: 2 },
+          { a: "G", b: "H", count: 2 }
+        ]
+      },
+      {
+        title: "Puzzle 2 (schwer)",
+        rows: 7,
+        cols: 7,
+        islands: [
+          { id: "A", row: 0, col: 0, value: 1 },
+          { id: "B", row: 0, col: 3, value: 3 },
+          { id: "C", row: 0, col: 6, value: 3 },
+          { id: "D", row: 2, col: 0, value: 4 },
+          { id: "E", row: 2, col: 3, value: 4 },
+          { id: "F", row: 2, col: 6, value: 1 },
+          { id: "G", row: 4, col: 0, value: 4 },
+          { id: "H", row: 4, col: 3, value: 8 },
+          { id: "I", row: 4, col: 6, value: 4 },
+          { id: "J", row: 6, col: 0, value: 2 },
+          { id: "K", row: 6, col: 3, value: 5 },
+          { id: "L", row: 6, col: 6, value: 3 }
+        ],
+        solution: [
+          { a: "B", b: "C", count: 2 },
+          { a: "D", b: "E", count: 1 },
+          { a: "G", b: "H", count: 2 },
+          { a: "H", b: "I", count: 2 },
+          { a: "J", b: "K", count: 2 },
+          { a: "K", b: "L", count: 1 },
+          { a: "A", b: "D", count: 1 },
+          { a: "D", b: "G", count: 2 },
+          { a: "B", b: "E", count: 1 },
+          { a: "E", b: "H", count: 2 },
+          { a: "H", b: "K", count: 2 },
+          { a: "C", b: "F", count: 1 },
+          { a: "I", b: "L", count: 2 }
+        ]
+      },
+      {
+        title: "Puzzle 3 (sehr schwer)",
+        rows: 5,
+        cols: 7,
+        islands: [
+          { id: "A", row: 0, col: 0, value: 4 },
+          { id: "B", row: 0, col: 2, value: 4 },
+          { id: "C", row: 0, col: 4, value: 5 },
+          { id: "D", row: 0, col: 6, value: 3 },
+          { id: "E", row: 2, col: 0, value: 6 },
+          { id: "F", row: 2, col: 2, value: 3 },
+          { id: "G", row: 2, col: 4, value: 6 },
+          { id: "H", row: 2, col: 6, value: 6 },
+          { id: "I", row: 4, col: 0, value: 3 },
+          { id: "J", row: 4, col: 2, value: 1 },
+          { id: "K", row: 4, col: 4, value: 2 },
+          { id: "L", row: 4, col: 6, value: 3 }
+        ],
+        solution: [
+          { a: "A", b: "B", count: 2 },
+          { a: "B", b: "C", count: 2 },
+          { a: "C", b: "D", count: 1 },
+          { a: "E", b: "F", count: 2 },
+          { a: "F", b: "G", count: 1 },
+          { a: "G", b: "H", count: 2 },
+          { a: "I", b: "J", count: 1 },
+          { a: "K", b: "L", count: 1 },
+          { a: "A", b: "E", count: 2 },
+          { a: "E", b: "I", count: 2 },
+          { a: "C", b: "G", count: 2 },
+          { a: "G", b: "K", count: 1 },
+          { a: "D", b: "H", count: 2 },
+          { a: "H", b: "L", count: 2 }
         ]
       }
     ];
@@ -461,7 +479,85 @@
         puzzleError(`${puzzle.title}: solution enthält Brückenkreuzungen`);
       }
 
+      const expectedDegrees = new Map();
+      islandById.forEach((island, id) => expectedDegrees.set(id, island.value));
+      const solutionDegrees = computeIslandDegrees(solutionMap, edgeDefs, islandById);
+      islandById.forEach((_, id) => {
+        if (solutionDegrees.get(id) !== expectedDegrees.get(id)) {
+          puzzleError(`${puzzle.title}: Inselwert und Musterlösung passen nicht zusammen (${id})`);
+        }
+      });
+      if (!isConnected(solutionMap, edgeDefs, islandById)) {
+        puzzleError(`${puzzle.title}: Musterlösung ist nicht zusammenhängend`);
+      }
+
+      const solutionCount = countSolutions(edgeDefs, islandById, expectedDegrees, 2);
+      if (solutionCount < 1) {
+        puzzleError(`${puzzle.title}: Puzzle ist nicht lösbar`);
+      }
+      if (solutionCount > 1) {
+        puzzleError(`${puzzle.title}: Puzzle hat mehr als eine Lösung`);
+      }
+
       return { islandById, neighbors, edgeDefs, solutionMap };
+    }
+
+    function countSolutions(edgeDefs, islandById, expectedDegrees, limit = 2) {
+      const edgeKeys = [...edgeDefs.keys()];
+      const incident = new Map([...islandById.keys()].map((id) => [id, []]));
+      edgeKeys.forEach((key, index) => {
+        const def = edgeDefs.get(key);
+        incident.get(def.a).push(index);
+        incident.get(def.b).push(index);
+      });
+
+      const edgeValues = new Array(edgeKeys.length).fill(0);
+      const degrees = new Map([...islandById.keys()].map((id) => [id, 0]));
+      let solutions = 0;
+
+      function maxRemaining(nodeId, position) {
+        return incident.get(nodeId).reduce((sum, index) => sum + (index > position ? 2 : 0), 0);
+      }
+
+      function backtrack(position) {
+        if (solutions >= limit) return;
+
+        if (position >= edgeKeys.length) {
+          const allExact = [...expectedDegrees.entries()].every(([id, target]) => degrees.get(id) === target);
+          if (!allExact) return;
+          const candidate = new Map();
+          edgeKeys.forEach((key, index) => candidate.set(key, edgeValues[index]));
+          if (getCrossingEdges(candidate, edgeDefs, islandById).size) return;
+          if (!isConnected(candidate, edgeDefs, islandById)) return;
+          solutions += 1;
+          return;
+        }
+
+        const key = edgeKeys[position];
+        const def = edgeDefs.get(key);
+        const aTarget = expectedDegrees.get(def.a);
+        const bTarget = expectedDegrees.get(def.b);
+
+        for (let count = 0; count <= 2; count += 1) {
+          const aNext = degrees.get(def.a) + count;
+          const bNext = degrees.get(def.b) + count;
+          if (aNext > aTarget || bNext > bTarget) continue;
+
+          edgeValues[position] = count;
+          degrees.set(def.a, aNext);
+          degrees.set(def.b, bNext);
+
+          const aFeasible = aNext + maxRemaining(def.a, position) >= aTarget;
+          const bFeasible = bNext + maxRemaining(def.b, position) >= bTarget;
+          if (aFeasible && bFeasible) backtrack(position + 1);
+
+          degrees.set(def.a, aNext - count);
+          degrees.set(def.b, bNext - count);
+        }
+      }
+
+      backtrack(0);
+      return solutions;
     }
 
     function getBridgeSegments(edgeMap, edgeDefs, islandById) {
@@ -626,54 +722,6 @@
       render();
     }
 
-    function moveSelection(direction) {
-      const meta = getMeta();
-      const selected = state.selectedIslandId || [...meta.islandById.keys()][0];
-      const source = meta.islandById.get(selected);
-      const candidates = [...meta.islandById.values()].filter((island) => island.id !== source.id);
-      const inDirection = candidates.filter((island) => {
-        if (direction === "left") return island.row === source.row && island.col < source.col;
-        if (direction === "right") return island.row === source.row && island.col > source.col;
-        if (direction === "up") return island.col === source.col && island.row < source.row;
-        return island.col === source.col && island.row > source.row;
-      });
-      if (!inDirection.length) return;
-      inDirection.sort((a, b) => {
-        if (direction === "left" || direction === "right") return Math.abs(a.col - source.col) - Math.abs(b.col - source.col);
-        return Math.abs(a.row - source.row) - Math.abs(b.row - source.row);
-      });
-      state.selectedIslandId = inDirection[0].id;
-      render();
-    }
-
-    function cycleSelection(step) {
-      const ids = [...getMeta().islandById.keys()];
-      if (!ids.length) return;
-      if (!state.selectedIslandId) {
-        state.selectedIslandId = ids[0];
-      } else {
-        const current = ids.indexOf(state.selectedIslandId);
-        const next = (current + step + ids.length) % ids.length;
-        state.selectedIslandId = ids[next];
-      }
-      render();
-    }
-
-    function toggleWithDirection(direction) {
-      const meta = getMeta();
-      if (!state.selectedIslandId) {
-        state.selectedIslandId = [...meta.islandById.keys()][0];
-      }
-      const selected = state.selectedIslandId;
-      const target = meta.neighbors.get(selected)[direction];
-      if (!target) {
-        setStatus([{ type: "warn", text: "In dieser Richtung gibt es keinen direkten Nachbarn." }]);
-        renderStatus();
-        return;
-      }
-      toggleBridge(selected, target);
-    }
-
     function hint() {
       const meta = getMeta();
       for (const [key, count] of meta.solutionMap.entries()) {
@@ -806,50 +854,11 @@
       renderStatus();
     }
 
-    function setupKeyboard() {
-      boardEl.addEventListener("keydown", (event) => {
-        const key = event.key;
-        if (key === "Tab") {
-          event.preventDefault();
-          cycleSelection(event.shiftKey ? -1 : 1);
-          return;
-        }
-
-        const arrowMap = {
-          ArrowLeft: "left",
-          ArrowRight: "right",
-          ArrowUp: "up",
-          ArrowDown: "down"
-        };
-
-        if (arrowMap[key]) {
-          event.preventDefault();
-          if (event.shiftKey) {
-            toggleWithDirection(arrowMap[key]);
-          } else {
-            moveSelection(arrowMap[key]);
-          }
-          return;
-        }
-
-        if (key.toLowerCase() === "r") {
-          event.preventDefault();
-          resetBtn.click();
-        } else if (key.toLowerCase() === "p") {
-          event.preventDefault();
-          checkBtn.click();
-        } else if (key.toLowerCase() === "h") {
-          event.preventDefault();
-          hintBtn.click();
-        }
-      });
-    }
-
     function initialize() {
       state.puzzleMetas = puzzles.map(buildPuzzleMeta);
       resetEdges();
       state.selectedIslandId = puzzles[0].islands[0].id;
-      setStatus([{ type: "neutral", text: "Puzzle geladen. Wähle Inseln per Klick oder Tastatur." }]);
+      setStatus([{ type: "neutral", text: "Puzzle geladen. Verbinde Inseln per Tipp auf dem Touchscreen." }]);
       render();
 
       checkBtn.addEventListener("click", () => {
@@ -866,8 +875,6 @@
       hintBtn.addEventListener("click", hint);
       solutionBtn.addEventListener("click", showSolution);
       nextPuzzleBtn.addEventListener("click", nextPuzzle);
-
-      setupKeyboard();
       window.addEventListener("resize", render);
     }
 
