@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geheimnis der Sechs – WebApp</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <h1>Geheimnis der Sechs</h1>
+      </div>
+      <div class="phase-card" aria-live="polite">
+        <span class="phase-label">Aktuelle Phase</span>
+        <strong id="phaseName">Phase 0 – Vorbereitung</strong>
+      </div>
+    </header>
+
+    <section class="controls-panel" aria-labelledby="setupHeading">
+      <div class="controls-copy">
+        <h2 id="setupHeading">Steuerung</h2>
+        <p id="instructionText">Lehrkraft legt die Anzahl der Münzen fest und startet dann die Runde.</p>
+        <p id="statusText" class="status-text" aria-live="polite">Bereit für eine neue Runde.</p>
+      </div>
+
+      <div class="controls-grid">
+        <label class="field">
+          <span>Anzahl der Münzen</span>
+          <input id="coinCountNumber" type="number" min="14" max="21" step="1" value="14" />
+        </label>
+
+        <label class="field field-range">
+          <span>Per Schieberegler anpassen</span>
+          <input id="coinCountRange" type="range" min="14" max="21" step="1" value="14" />
+        </label>
+
+        <div class="button-row">
+          <button id="startButton" class="primary-button" type="button">Spiel starten</button>
+          <button id="resetButton" class="secondary-button" type="button">Zurück zu Phase 0</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="confirmPanel" class="confirm-panel hidden" aria-live="polite">
+      <p id="confirmText">Stern unter dieser Münze verstecken?</p>
+      <div class="button-row">
+        <button id="confirmButton" class="primary-button" type="button">Platzierung bestätigen</button>
+        <button id="cancelButton" class="secondary-button" type="button">Andere Münze wählen</button>
+      </div>
+    </section>
+
+    <section class="board-panel" aria-labelledby="boardHeading">
+      <div class="board-header">
+        <h2 id="boardHeading">Spielfeld</h2>
+        <p>Phase 1: Platziere den Stern unter einer Münzen im Körper der 6. Phase 2: Finde die gesuchte Münze.</p>
+      </div>
+      <div id="board" class="board" role="grid" aria-label="Münzen in Form einer Sechs"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
