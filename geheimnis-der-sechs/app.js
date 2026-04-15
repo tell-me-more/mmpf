@@ -129,40 +129,80 @@ function getHookCount(totalCoins) {
   return 7;
 }
 
+// Reference coordinate space: 700 px wide × 640 px tall.
+// All values are converted to percentages so they work with CSS left/top.
+const BOARD_REF_W = 700;
+const BOARD_REF_H = 640;
+
+// Body ellipse and neck geometry in reference pixels.
+// The body is a full oval with a small gap near the upper-left entry point.
+// The neck starts above the body and bends down-left into that entry point.
+const BODY_CX = 410;
+const BODY_CY = 430;
+const BODY_RX = 168;
+const BODY_RY = 150;
+const BODY_JOIN_DEG = 138;
+
+const NECK_TIP = { x: 462, y: 74 };
+const NECK_CTRL_1 = { x: 414, y: 34 };
+const NECK_CTRL_2 = { x: 240, y: 176 };
+
+function pct(px, axis) {
+  return axis === 'x' ? (px / BOARD_REF_W) * 100 : (px / BOARD_REF_H) * 100;
+}
+
+function pointOnEllipse(cx, cy, rx, ry, degrees) {
+  const radians = (degrees * Math.PI) / 180;
+  return {
+    x: cx + rx * Math.cos(radians),
+    y: cy - ry * Math.sin(radians),
+  };
+}
+
 function buildCoinLayout(totalCoins) {
   const hookCount = getHookCount(totalCoins);
   const bodyCount = totalCoins - hookCount;
 
-  const center = { x: 58, y: 66 };
-  const radiusX = 22;
-  const radiusY = 25;
-  const joinAngle = (225 * Math.PI) / 180;
-
+  // The body uses a full loop without duplicating the join point. That leaves
+  // a small natural gap near the upper-left where the neck enters.
   const bodyCoins = [];
   for (let index = 0; index < bodyCount; index += 1) {
-    const angle = joinAngle + (2 * Math.PI * index) / bodyCount;
+    const point = pointOnEllipse(
+      BODY_CX,
+      BODY_CY,
+      BODY_RX,
+      BODY_RY,
+      BODY_JOIN_DEG - (360 / bodyCount) * index,
+    );
     bodyCoins.push({
       id: `body-${index}`,
       kind: 'body',
-      x: center.x + radiusX * Math.cos(angle),
-      y: center.y + radiusY * Math.sin(angle),
+      x: pct(point.x, 'x'),
+      y: pct(point.y, 'y'),
       revealState: null,
       slideDirection: null,
     });
   }
 
-  const joinPoint = bodyCoins[0];
-  const hookCoins = sampleCubicBezier(
-    { x: 54, y: 10 },
-    { x: 44, y: 8 },
-    { x: 35, y: 24 },
-    { x: joinPoint.x, y: joinPoint.y - 2 },
-    hookCount,
-  ).map((point, index) => ({
+  const joinPx = pointOnEllipse(BODY_CX, BODY_CY, BODY_RX, BODY_RY, BODY_JOIN_DEG);
+
+  const stemPoints = [];
+  for (let index = 0; index < hookCount; index += 1) {
+    const t = index / hookCount;
+    stemPoints.push(cubicBezierPoint(
+      NECK_TIP,
+      NECK_CTRL_1,
+      NECK_CTRL_2,
+      joinPx,
+      t,
+    ));
+  }
+
+  const hookCoins = stemPoints.map((point, index) => ({
     id: `hook-${index}`,
     kind: 'hook',
-    x: point.x,
-    y: point.y,
+    x: pct(point.x, 'x'),
+    y: pct(point.y, 'y'),
     revealState: null,
     slideDirection: null,
   }));
