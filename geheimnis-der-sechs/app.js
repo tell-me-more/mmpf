@@ -1,5 +1,5 @@
-const MIN_COINS = 14;
-const MAX_COINS = 21;
+const MIN_COINS = 18;
+const MAX_COINS = 24;
 const SEARCH_RESET_DELAY_MS = 2200;
 const HIDE_ANIMATION_MS = 2400;
 const WRONG_REVEAL_MS = 1000;
@@ -7,8 +7,7 @@ const WRONG_REVEAL_MS = 1000;
 const elements = {
   body: document.body,
   board: document.getElementById('board'),
-  coinCountNumber: document.getElementById('coinCountNumber'),
-  coinCountRange: document.getElementById('coinCountRange'),
+  coinCountDisplay: document.getElementById('coinCountDisplay'),
   startButton: document.getElementById('startButton'),
   resetButton: document.getElementById('resetButton'),
   confirmPanel: document.getElementById('confirmPanel'),
@@ -22,19 +21,13 @@ const elements = {
 
 const state = {
   phase: 0,
-  totalCoins: 14,
+  totalCoins: MIN_COINS,
   coins: [],
   pendingIndex: null,
   secretIndex: null,
   animationLocked: false,
   timerIds: [],
 };
-
-function clampCoinCount(value) {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed)) return MIN_COINS;
-  return Math.min(MAX_COINS, Math.max(MIN_COINS, parsed));
-}
 
 function clearTimers() {
   state.timerIds.forEach((id) => window.clearTimeout(id));
@@ -58,62 +51,25 @@ function setPhase(phase) {
 
   if (phase === 0) {
     elements.phaseName.textContent = 'Phase 0 - Vorbereitung';
-    elements.instructionText.textContent = 'Lege die Anzahl der Münzen fest und starte dann die Runde.';
+    elements.instructionText.textContent = 'Die nächste Runde wird mit einer zufälligen Anzahl von 18 bis 24 Münzen vorbereitet.';
     elements.confirmPanel.classList.add('hidden');
-    toggleConfigInputs(false);
+    toggleStartButton(false);
   } else if (phase === 1) {
     elements.phaseName.textContent = 'Phase 1 - Stern verstecken';
     elements.instructionText.textContent = 'Wähle eine Münze im Körper der 6 und bestätige die Platzierung.';
-    toggleConfigInputs(true);
+    toggleStartButton(true);
   } else if (phase === 2) {
     elements.phaseName.textContent = 'Phase 2 - Stern suchen';
     elements.instructionText.textContent = 'Klicke Münzen an, bis der Stern gefunden wurde.';
     elements.confirmPanel.classList.add('hidden');
-    toggleConfigInputs(true);
+    toggleStartButton(true);
   }
 
   renderBoard();
 }
 
-function toggleConfigInputs(disabled) {
-  elements.coinCountNumber.disabled = disabled;
-  elements.coinCountRange.disabled = disabled;
+function toggleStartButton(disabled) {
   elements.startButton.disabled = disabled;
-}
-
-function interpolatePoint(a, b, t) {
-  return {
-    x: a.x + (b.x - a.x) * t,
-    y: a.y + (b.y - a.y) * t,
-  };
-}
-
-function cubicBezierPoint(p0, p1, p2, p3, t) {
-  const mt = 1 - t;
-  return {
-    x:
-      (mt ** 3) * p0.x +
-      3 * (mt ** 2) * t * p1.x +
-      3 * mt * (t ** 2) * p2.x +
-      (t ** 3) * p3.x,
-    y:
-      (mt ** 3) * p0.y +
-      3 * (mt ** 2) * t * p1.y +
-      3 * mt * (t ** 2) * p2.y +
-      (t ** 3) * p3.y,
-  };
-}
-
-function sampleCubicBezier(p0, p1, p2, p3, count) {
-  if (count <= 0) return [];
-  if (count === 1) return [p0];
-
-  const points = [];
-  for (let index = 0; index < count; index += 1) {
-    const t = index / (count - 1);
-    points.push(cubicBezierPoint(p0, p1, p2, p3, t));
-  }
-  return points;
 }
 
 function clearRevealStates() {
@@ -123,110 +79,161 @@ function clearRevealStates() {
   });
 }
 
-function getHookCount(totalCoins) {
-  if (totalCoins <= 16) return 5;
-  if (totalCoins <= 19) return 6;
-  return 7;
-}
+const GRID_INSET_X = 16;
+const GRID_INSET_Y = 6;
+const GRID_SPAN_W = 68;
+const GRID_SPAN_H = 88;
 
-// Reference coordinate space: 700 px wide × 640 px tall.
-// All values are converted to percentages so they work with CSS left/top.
-const BOARD_REF_W = 700;
-const BOARD_REF_H = 640;
+function buildLayout(patternRows) {
+  const rows = patternRows.length;
+  const columns = patternRows[0].length;
 
-// Body ellipse and neck geometry in reference pixels.
-// The body is a full oval with a small gap near the upper-left entry point.
-// The neck starts above the body and bends down-left into that entry point.
-const BODY_CX = 410;
-const BODY_CY = 430;
-const BODY_RX = 168;
-const BODY_RY = 150;
-const BODY_JOIN_DEG = 138;
-
-const NECK_TIP = { x: 462, y: 74 };
-const NECK_CTRL_1 = { x: 414, y: 34 };
-const NECK_CTRL_2 = { x: 240, y: 176 };
-
-function pct(px, axis) {
-  return axis === 'x' ? (px / BOARD_REF_W) * 100 : (px / BOARD_REF_H) * 100;
-}
-
-function pointOnEllipse(cx, cy, rx, ry, degrees) {
-  const radians = (degrees * Math.PI) / 180;
   return {
-    x: cx + rx * Math.cos(radians),
-    y: cy - ry * Math.sin(radians),
+    columns,
+    rows,
+    points: patternRows.flatMap((row, rowIndex) => (
+      Array.from(row).flatMap((cell, columnIndex) => {
+        if (cell !== 'H' && cell !== 'B') return [];
+
+        return [{
+          gridX: columnIndex + 1,
+          gridY: rows - rowIndex,
+          kind: cell === 'H' ? 'hook' : 'body',
+        }];
+      })
+    )),
   };
 }
 
+// Every variant uses its own raster size so the six can grow in height and width
+// as more coins are added. H marks the hook, B marks the circular body.
+const SIX_LAYOUTS = {
+  18: buildLayout(
+    [
+      '.HHH.',
+      'H....',
+      'H....',
+      'BBBB.',
+      'B...B',
+      'B...B',
+      'B...B',
+      '.BBB.',
+    ],
+  ),
+  19: buildLayout(
+    [
+      '.HHH.',
+      'H....',
+      'H....',
+      'H....',
+      'BBBB.',
+      'B...B',
+      'B...B',
+      'B...B',
+      '.BBB.',
+    ],
+  ),
+  20: buildLayout(
+    [
+      '.HHH..',
+      'H.....',
+      'H.....',
+      'H.....',
+      'BBBB..',
+      'B...B.',
+      'B...B.',
+      'B...B.',
+      '.BBBB.',
+    ],
+  ),
+  21: buildLayout(
+    [
+      '.HHH..',
+      'H.....',
+      'H.....',
+      'H.....',
+      'BBBBB.',
+      'B....B',
+      'B....B',
+      'B....B',
+      '.BBBB.',
+    ],
+  ),
+  22: buildLayout(
+    [
+      '.HHHH.',
+      'H.....',
+      'H.....',
+      'H.....',
+      'H.....',
+      'BBBB..',
+      'B...B.',
+      'B...B.',
+      'B...B.',
+      '.BBBB.',
+    ],
+  ),
+  23: buildLayout(
+    [
+      '.HHHH.',
+      'H.....',
+      'H.....',
+      'H.....',
+      'H.....',
+      'BBBBB.',
+      'B....B',
+      'B....B',
+      'B....B',
+      '.BBBB.',
+    ],
+  ),
+  24: buildLayout(
+    [
+      '.HHHH..',
+      'H......',
+      'H......',
+      'H......',
+      'BBBBB..',
+      'B....B.',
+      'B....B.',
+      'B....B.',
+      'B....B.',
+      '.BBBB..',
+    ],
+  ),
+};
+
+function getRandomCoinCount() {
+  return MIN_COINS + Math.floor(Math.random() * (MAX_COINS - MIN_COINS + 1));
+}
+
+function updateCoinCountDisplay() {
+  elements.coinCountDisplay.textContent = `${state.totalCoins} Münzen`;
+}
+
 function buildCoinLayout(totalCoins) {
-  const hookCount = getHookCount(totalCoins);
-  const bodyCount = totalCoins - hookCount;
+  const layout = SIX_LAYOUTS[totalCoins] ?? SIX_LAYOUTS[MIN_COINS];
 
-  // The body uses a full loop without duplicating the join point. That leaves
-  // a small natural gap near the upper-left where the neck enters.
-  const bodyCoins = [];
-  for (let index = 0; index < bodyCount; index += 1) {
-    const point = pointOnEllipse(
-      BODY_CX,
-      BODY_CY,
-      BODY_RX,
-      BODY_RY,
-      BODY_JOIN_DEG - (360 / bodyCount) * index,
-    );
-    bodyCoins.push({
-      id: `body-${index}`,
-      kind: 'body',
-      x: pct(point.x, 'x'),
-      y: pct(point.y, 'y'),
-      revealState: null,
-      slideDirection: null,
-    });
-  }
-
-  const joinPx = pointOnEllipse(BODY_CX, BODY_CY, BODY_RX, BODY_RY, BODY_JOIN_DEG);
-
-  const stemPoints = [];
-  for (let index = 0; index < hookCount; index += 1) {
-    const t = index / hookCount;
-    stemPoints.push(cubicBezierPoint(
-      NECK_TIP,
-      NECK_CTRL_1,
-      NECK_CTRL_2,
-      joinPx,
-      t,
-    ));
-  }
-
-  const hookCoins = stemPoints.map((point, index) => ({
-    id: `hook-${index}`,
-    kind: 'hook',
-    x: pct(point.x, 'x'),
-    y: pct(point.y, 'y'),
+  return layout.points.map(({ gridX, gridY, kind }) => ({
+    id: `${kind}-${gridX}-${gridY}`,
+    kind,
+    x: GRID_INSET_X + ((gridX - 0.5) * GRID_SPAN_W) / layout.columns,
+    y: GRID_INSET_Y + ((layout.rows - gridY + 0.5) * GRID_SPAN_H) / layout.rows,
     revealState: null,
     slideDirection: null,
   }));
-
-  return [...hookCoins, ...bodyCoins];
 }
 
-function resetRound(keepCoinCount = true) {
+function resetRound() {
   clearTimers();
   state.pendingIndex = null;
   state.secretIndex = null;
   state.animationLocked = false;
-  if (!keepCoinCount) {
-    state.totalCoins = MIN_COINS;
-    syncCoinInputs(MIN_COINS);
-  }
+  state.totalCoins = getRandomCoinCount();
+  updateCoinCountDisplay();
   state.coins = buildCoinLayout(state.totalCoins);
   setPhase(0);
-  setStatus('Bereit für eine neue Runde.', 'neutral');
-}
-
-function syncCoinInputs(value) {
-  elements.coinCountNumber.value = value;
-  elements.coinCountRange.value = value;
+  setStatus(`Bereit für eine neue Runde mit ${state.totalCoins} Münzen.`, 'neutral');
 }
 
 function isBodyCoin(index) {
@@ -270,7 +277,7 @@ function inspectCoin(index) {
   if (isCorrect) {
     setStatus('Stern gefunden!', 'success');
     queueTimeout(() => {
-      resetRound(true);
+      resetRound();
     }, SEARCH_RESET_DELAY_MS);
     return;
   }
@@ -320,7 +327,7 @@ function startRound() {
   state.animationLocked = false;
   state.coins = buildCoinLayout(state.totalCoins);
   setPhase(1);
-  setStatus('Phase 1 läuft. Wähle eine Münze im Körper der 6.', 'neutral');
+  setStatus(`Phase 1 läuft mit ${state.totalCoins} Münzen. Wähle eine Münze im Körper der 6.`, 'neutral');
 }
 
 function renderBoard() {
@@ -405,28 +412,16 @@ function renderBoard() {
   });
 }
 
-function handleCoinInput(value) {
-  const clamped = clampCoinCount(value);
-  state.totalCoins = clamped;
-  syncCoinInputs(clamped);
-  state.coins = buildCoinLayout(clamped);
-  renderBoard();
-}
-
 function bindEvents() {
-  elements.coinCountNumber.addEventListener('input', (event) => handleCoinInput(event.target.value));
-  elements.coinCountRange.addEventListener('input', (event) => handleCoinInput(event.target.value));
   elements.startButton.addEventListener('click', startRound);
-  elements.resetButton.addEventListener('click', () => resetRound(true));
+  elements.resetButton.addEventListener('click', resetRound);
   elements.confirmButton.addEventListener('click', confirmPlacement);
   elements.cancelButton.addEventListener('click', cancelPlacement);
 }
 
 function init() {
-  state.coins = buildCoinLayout(state.totalCoins);
   bindEvents();
-  setPhase(0);
-  setStatus('Bereit für eine neue Runde.', 'neutral');
+  resetRound();
 }
 
 init();
