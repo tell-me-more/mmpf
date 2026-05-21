@@ -406,6 +406,7 @@ const state = {
 };
 
 const boardEl = document.getElementById("board");
+const puzzleLabelEl = document.getElementById("puzzleLabel");
 
 const checkBtn = document.getElementById("checkBtn");
 const solutionBtn = document.getElementById("solutionBtn");
@@ -893,16 +894,12 @@ function createBridgeLine(svg, x1, y1, x2, y2, offsetX, offsetY, bad) {
 function render() {
   const puzzle = getCurrentPuzzle();
   const meta = getMeta();
+  puzzleLabelEl.textContent = `${puzzle.title} · ${puzzle.rows}×${puzzle.cols}`;
   boardEl.style.setProperty("--rows", puzzle.rows);
   boardEl.style.setProperty("--cols", puzzle.cols);
   boardEl.innerHTML = "";
 
-  const isPanelVisible = window.innerWidth > 930;
-  const availWidth = window.innerWidth - 120 - (isPanelVisible ? 400 : 0);
-  const availHeight = window.innerHeight - 200;
-  const cellByWidth = Math.floor(availWidth / puzzle.cols);
-  const cellByHeight = Math.floor(availHeight / puzzle.rows);
-  const cellSize = Math.max(36, Math.min(64, cellByWidth, cellByHeight));
+  const cellSize = Math.max(44, Math.min(64, Math.floor((window.innerWidth - 120) / (puzzle.cols + 1))));
   boardEl.style.setProperty("--cell", `${cellSize}px`);
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

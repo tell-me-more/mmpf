@@ -162,7 +162,7 @@ h1 {
   border-radius: 12px;
   background: #f9fbff;
   overflow: auto;
-  max-height: 90vh;
+  max-height: 72vh;
   padding: 10px;
   -webkit-overflow-scrolling: touch;
 }
