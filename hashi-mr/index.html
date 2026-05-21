@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hashi – Mathe mit Pfiff</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <h1>Hashi (Brückenrätsel)</h1>
+    </section>
+
+    <section class="layout">
+      <section class="card">
+        <div class="puzzle-nav" id="puzzleNav" aria-label="Puzzle-Auswahl"></div>
+        <div class="controls" aria-label="Spielsteuerung">
+          <button class="btn primary" id="checkBtn" aria-label="Puzzle prüfen">Prüfen</button>
+          <button class="btn secondary" id="solutionBtn" aria-label="Lösung anzeigen (Passwort)">Lösung 🔒</button>
+          <button class="btn danger" id="resetAllBtn" aria-label="Alle Puzzles zurücksetzen (Passwort)">Alles zurücksetzen 🔒</button>
+        </div>
+        <h2 class="puzzle-label" id="puzzleLabel"></h2>
+        <div class="board-wrap">
+          <div id="board" class="board" aria-label="Hashi Spielfeld"></div>
+        </div>
+      </section>
+
+      <aside class="card panel">
+        <section class="box">
+          <h2>Regeln</h2>
+          <ul>
+            <li>Jede Insel braucht genau so viele Brücken wie ihre Zahl.</li>
+            <li>Brücken dürfen nur waagerecht oder senkrecht verlaufen.</li>
+            <li>Brücken verbinden immer direkte Nachbarinseln (ohne Insel dazwischen).</li>
+            <li>Zwischen zwei Inseln sind 0, 1 oder 2 Brücken erlaubt.</li>
+            <li>Brücken dürfen sich nicht kreuzen.</li>
+            <li>Am Ende müssen alle Inseln zusammenhängen.</li>
+          </ul>
+        </section>
+        <section class="box">
+          <h2>Anleitung</h2>
+          <ul>
+            <li>Klicke jeweils auf die zwei Inseln, die du miteinander verbinden möchtest.</li>
+            <li>Wenn du alle Brücken löschen möchtest, verbinde die Inseln ein drittes Mal.</li>
+            <li>Überprüfe deine Lösung mit dem "Prüfen"-Button.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <!-- Passwort-Dialog -->
+  <div id="pwModal" class="pw-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <div class="pw-box">
+      <h3 id="pwTitle">Passwort erforderlich</h3>
+      <p id="pwPrompt" class="pw-prompt"></p>
+      <input type="password" id="pwInput" class="pw-input" autocomplete="off" placeholder="Passwort eingeben" />
+      <p id="pwError" class="pw-error hidden">Falsches Passwort – bitte erneut versuchen.</p>
+      <div class="pw-actions">
+        <button class="btn primary" id="pwConfirm">Bestätigen</button>
+        <button class="btn secondary" id="pwCancel">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
