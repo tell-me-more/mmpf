@@ -16,6 +16,11 @@
       <section class="card">
         <div class="puzzle-nav" id="puzzleNav" aria-label="Puzzle-Auswahl"></div>
         <div class="controls" aria-label="Spielsteuerung">
+          <div class="mode-toggle" role="group" aria-label="Brücken-Modus wählen">
+            <button class="mode-btn active" id="buildModeBtn" type="button" aria-pressed="true">Brücke bauen</button>
+            <button class="mode-btn" id="deleteModeBtn" type="button" aria-pressed="false">Brücke löschen</button>
+          </div>
+          <button class="btn secondary" id="cancelSelectionBtn" aria-label="Auswahl abbrechen">Auswahl abbrechen</button>
           <button class="btn primary" id="checkBtn" aria-label="Puzzle prüfen">Prüfen</button>
           <button class="btn secondary" id="solutionBtn" aria-label="Lösung anzeigen (Passwort)">Lösung 🔒</button>
           <button class="btn danger" id="resetAllBtn" aria-label="Alle Puzzles zurücksetzen (Passwort)">Alles zurücksetzen 🔒</button>
@@ -41,8 +46,9 @@
         <section class="box">
           <h2>Anleitung</h2>
           <ul>
-            <li>Klicke jeweils auf die zwei Inseln, die du miteinander verbinden möchtest.</li>
-            <li>Wenn du alle Brücken löschen möchtest, verbinde die Inseln ein drittes Mal.</li>
+            <li>Wähle „Brücke bauen“ und klicke jeweils auf zwei Inseln, die du miteinander verbinden möchtest.</li>
+            <li>Wähle „Brücke löschen“ und klicke auf eine bestehende Brücke oder auf die zwei verbundenen Inseln, um diese Brücken zu entfernen.</li>
+            <li>Mit „Auswahl abbrechen“ hebst du die aktuell markierte Insel auf.</li>
             <li>Überprüfe deine Lösung mit dem "Prüfen"-Button.</li>
           </ul>
         </section>
