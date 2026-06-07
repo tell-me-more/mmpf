@@ -396,6 +396,7 @@ const puzzles = [
 const state = {
   puzzleIndex: 0,
   selectedIslandId: null,
+  bridgeMode: "build",
   statusMessages: [],
   edges: null,
   allEdges: [],
@@ -411,6 +412,9 @@ const puzzleLabelEl = document.getElementById("puzzleLabel");
 const checkBtn = document.getElementById("checkBtn");
 const solutionBtn = document.getElementById("solutionBtn");
 const resetAllBtn = document.getElementById("resetAllBtn");
+const buildModeBtn = document.getElementById("buildModeBtn");
+const deleteModeBtn = document.getElementById("deleteModeBtn");
+const cancelSelectionBtn = document.getElementById("cancelSelectionBtn");
 const pwModal = document.getElementById("pwModal");
 const pwInput = document.getElementById("pwInput");
 const pwError = document.getElementById("pwError");
@@ -784,6 +788,50 @@ function canToggleTo(edgeKeyValue, nextCount) {
   return { ok: true };
 }
 
+function updateModeButtons() {
+  const buildActive = state.bridgeMode === "build";
+  buildModeBtn.classList.toggle("active", buildActive);
+  deleteModeBtn.classList.toggle("active", !buildActive);
+  buildModeBtn.setAttribute("aria-pressed", String(buildActive));
+  deleteModeBtn.setAttribute("aria-pressed", String(!buildActive));
+}
+
+function setBridgeMode(mode) {
+  state.bridgeMode = mode;
+  state.selectedIslandId = null;
+  updateModeButtons();
+  setStatus([{ type: "neutral", text: mode === "build" ? "Brücke-bauen-Modus aktiv." : "Brücke-löschen-Modus aktiv. Klicke auf eine Brücke oder auf zwei verbundene Inseln." }]);
+  render();
+}
+
+function clearSelection() {
+  state.selectedIslandId = null;
+  setStatus([{ type: "neutral", text: "Auswahl abgebrochen. Wähle eine neue Insel." }]);
+  render();
+}
+
+function removeBridgeByKey(key) {
+  const current = state.edges.get(key) || 0;
+  if (!current) {
+    setStatus([{ type: "warn", text: "Zwischen diesen Inseln gibt es keine Brücke zum Löschen." }]);
+    return;
+  }
+  state.edges.set(key, 0);
+  state.selectedIslandId = null;
+  validateState();
+  render();
+}
+
+function removeBridge(a, b) {
+  const meta = getMeta();
+  const key = edgeKey(a, b);
+  if (!meta.edgeDefs.has(key)) {
+    setStatus([{ type: "warn", text: "Brücken können nur zwischen direkten Nachbarn gelöscht werden." }]);
+    return;
+  }
+  removeBridgeByKey(key);
+}
+
 function toggleBridge(a, b) {
   const meta = getMeta();
   const key = edgeKey(a, b);
@@ -891,6 +939,21 @@ function createBridgeLine(svg, x1, y1, x2, y2, offsetX, offsetY, bad) {
   svg.append(line);
 }
 
+function createBridgeHitArea(svg, x1, y1, x2, y2, key) {
+  const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  hitArea.setAttribute("x1", String(x1));
+  hitArea.setAttribute("y1", String(y1));
+  hitArea.setAttribute("x2", String(x2));
+  hitArea.setAttribute("y2", String(y2));
+  hitArea.setAttribute("class", "bridge-hit-area");
+  hitArea.setAttribute("aria-label", "Brücke löschen");
+  hitArea.addEventListener("click", () => {
+    if (state.bridgeMode !== "delete") return;
+    removeBridgeByKey(key);
+  });
+  svg.append(hitArea);
+}
+
 function render() {
   const puzzle = getCurrentPuzzle();
   const meta = getMeta();
@@ -925,6 +988,7 @@ function render() {
       createBridgeLine(svg, p1.x, p1.y, p2.x, p2.y, dx, dy, bad);
       createBridgeLine(svg, p1.x, p1.y, p2.x, p2.y, -dx, -dy, bad);
     }
+    createBridgeHitArea(svg, p1.x, p1.y, p2.x, p2.y, key);
   });
 
   boardEl.append(svg);
@@ -945,7 +1009,11 @@ function render() {
     if (degreeState === "over") button.classList.add("invalid");
     button.addEventListener("click", () => {
       if (state.selectedIslandId && state.selectedIslandId !== island.id) {
-        toggleBridge(state.selectedIslandId, island.id);
+        if (state.bridgeMode === "delete") {
+          removeBridge(state.selectedIslandId, island.id);
+        } else {
+          toggleBridge(state.selectedIslandId, island.id);
+        }
       } else {
         state.selectedIslandId = island.id;
         render();
@@ -970,6 +1038,11 @@ function initialize() {
   state.selectedIslandId = null;
   setStatus([{ type: "neutral", text: "Puzzle geladen. Wähle eine Insel und tippe dann auf eine Nachbarinsel, um eine Brücke zu setzen." }]);
   render();
+  updateModeButtons();
+
+  buildModeBtn.addEventListener("click", () => setBridgeMode("build"));
+  deleteModeBtn.addEventListener("click", () => setBridgeMode("delete"));
+  cancelSelectionBtn.addEventListener("click", clearSelection);
 
   checkBtn.addEventListener("click", () => {
     const { solved } = validateState();
